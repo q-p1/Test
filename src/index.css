@@ -1,0 +1,181 @@
+/* Fonts — self-hosted (no external requests) */
+@import '@fontsource/ibm-plex-sans-arabic/300.css';
+@import '@fontsource/ibm-plex-sans-arabic/400.css';
+@import '@fontsource/ibm-plex-sans-arabic/500.css';
+@import '@fontsource/ibm-plex-sans-arabic/600.css';
+@import '@fontsource/ibm-plex-sans-arabic/700.css';
+@import '@fontsource/tajawal/500.css';
+@import '@fontsource/tajawal/700.css';
+@import '@fontsource/tajawal/800.css';
+@import '@fontsource/tajawal/900.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --header-h: 76px;
+  }
+
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* Lenis controls scroll; disable native smooth to avoid conflict */
+  html.lenis,
+  html.lenis body {
+    height: auto;
+  }
+  .lenis.lenis-smooth {
+    scroll-behavior: auto !important;
+  }
+  .lenis.lenis-stopped {
+    overflow: hidden;
+  }
+
+  body {
+    @apply bg-paper text-ink-900 font-sans antialiased;
+    font-feature-settings: 'ss01', 'cv01';
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, h4 {
+    @apply font-display text-ink-950;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: theme('colors.accent.500');
+    color: white;
+  }
+
+  /* Tabular figures for prices/numbers */
+  .tnum {
+    font-feature-settings: 'tnum';
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Accessible focus ring */
+  :focus-visible {
+    outline: 2px solid theme('colors.accent.500');
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+
+  /* Custom scrollbar (desktop) */
+  @media (pointer: fine) {
+    ::-webkit-scrollbar {
+      width: 10px;
+    }
+    ::-webkit-scrollbar-track {
+      background: theme('colors.paper.200');
+    }
+    ::-webkit-scrollbar-thumb {
+      background: theme('colors.ink.300');
+      border-radius: 999px;
+      border: 3px solid theme('colors.paper.200');
+    }
+  }
+}
+
+@layer components {
+  .container-content {
+    @apply mx-auto w-full max-w-content px-5 sm:px-8 lg:px-12;
+  }
+
+  .eyebrow {
+    @apply inline-flex items-center gap-2 text-sm font-medium tracking-wide text-accent-600;
+  }
+
+  .glass {
+    background: rgba(255, 255, 255, 0.62);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+
+  .glass-dark {
+    background: rgba(11, 11, 15, 0.55);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .text-gradient {
+    background: theme('backgroundImage.accent-gradient');
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* Loading skeleton shimmer */
+  .skeleton {
+    @apply relative overflow-hidden bg-ink-200/60;
+  }
+  .skeleton::after {
+    content: '';
+    @apply absolute inset-0 -translate-x-full;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.55),
+      transparent
+    );
+    animation: shimmer 1.6s infinite;
+  }
+
+  /* Hairline divider */
+  .hairline {
+    @apply border-ink-950/8;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .mask-fade-x {
+    -webkit-mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 8%,
+      black 92%,
+      transparent
+    );
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      black 8%,
+      black 92%,
+      transparent
+    );
+  }
+}
+
+/* Respect reduced motion globally */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
