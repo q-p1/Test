@@ -41,7 +41,9 @@ describe('full interaction regression', () => {
     fireEvent.change(within(dialog).getByLabelText('إلى'), { target: { value: '18:00' } });
     fireEvent.click(within(dialog).getByRole('button', { name: 'حفظ الاستثناء' }));
     fireEvent.click(within(dialog).getByRole('button', { name: 'إغلاق النافذة' }));
-    expect(screen.getByText('رحلة التحفيظ')).toBeVisible();
+    const timeline = document.querySelector<HTMLElement>('.timeline-list');
+    expect(timeline).not.toBeNull();
+    expect(within(timeline!).getByRole('heading', { name: 'رحلة التحفيظ' })).toBeVisible();
     const tahfizSession = screen.getByTestId('tahfiz-session');
     expect(within(tahfizSession).getByText(/استُبدلت الجلسة بحدث: رحلة التحفيظ/)).toBeVisible();
     expect(within(tahfizSession).queryByRole('button', { name: 'بدء' })).not.toBeInTheDocument();
