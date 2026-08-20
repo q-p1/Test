@@ -2,9 +2,8 @@ import { expect, test, type Page } from '@playwright/test';
 
 const storageKey = 'routine.app.state';
 
-test.beforeEach(async ({ page }, testInfo) => {
+test.beforeEach(async (_fixtures, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-13', 'Visual QA is captured once at the central iPhone size.');
-  await page.addInitScript(() => localStorage.clear());
 });
 
 test('capture core screens and states', async ({ page }) => {
@@ -15,6 +14,7 @@ test('capture core screens and states', async ({ page }) => {
   await capture(page, 'fitness');
 
   await navigate(page, 'التمارين');
+  await warmLazyImages(page);
   await capture(page, 'exercise-library');
   await page.locator('.exercise-card__button').first().click();
   await expect(page.getByRole('dialog')).toBeVisible();
@@ -68,9 +68,29 @@ test('capture completed, holiday and tahfiz trip days', async ({ page }) => {
 
 async function capture(page: Page, name: string) {
   await expect(page.locator('.app-shell')).toBeVisible();
+  await page.evaluate(() => {
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    window.scrollTo({ top: 0, behavior: 'auto' });
+  });
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
   await page.screenshot({ path: `visual-qa/${name}.png`, fullPage: true });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+}
+
+async function warmLazyImages(page: Page) {
+  const expectedImages = await page.locator('.exercise-card img').count();
+  expect(expectedImages).toBe(17);
+  await page.evaluate(async () => {
+    const step = Math.max(240, Math.floor(window.innerHeight * 0.75));
+    for (let top = 0; top < document.documentElement.scrollHeight; top += step) {
+      window.scrollTo({ top, behavior: 'auto' });
+      await new Promise((resolve) => window.setTimeout(resolve, 60));
+    }
+  });
+  await expect.poll(() => page.locator('.exercise-card img').evaluateAll(
+    (images) => images.filter((image) => image.complete && image.naturalWidth > 0).length,
+  )).toBe(expectedImages);
 }
 
 async function navigate(page: Page, label: 'اليوم' | 'الرياضة' | 'التمارين' | 'الإعدادات') {
