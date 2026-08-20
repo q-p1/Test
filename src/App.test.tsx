@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { RoutineProvider } from './state/RoutineContext';
@@ -19,7 +19,10 @@ describe('app persistence smoke tests', () => {
     const fajr = screen.getByRole('button', { name: /الفجر/ });
     fireEvent.click(fajr);
     expect(fajr).toHaveAttribute('aria-pressed', 'true');
-    await waitFor(() => expect(JSON.parse(localStorage.getItem(STORAGE_KEY)!).days).toBeTruthy());
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
+    const savedDate = Object.keys(saved.days)[0];
+    if (!savedDate) throw new Error('Expected the current day to be persisted synchronously.');
+    expect(saved.days[savedDate].prayers.fajr).toBe(true);
     first.unmount();
     renderApp();
     expect(screen.getByRole('button', { name: /الفجر/ })).toHaveAttribute('aria-pressed', 'true');

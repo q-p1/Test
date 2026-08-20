@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { addOverride, removeOverrideById, removeOverridesForSingleDate } from '../lib/schedule';
 import { createActiveWorkout, finishActiveWorkout } from '../lib/fitness';
 import { completeTimer, pauseTimer, resetTimer, startTimer } from '../lib/timer';
@@ -49,17 +49,31 @@ const RoutineContext = createContext<RoutineContextValue | null>(null);
 export function RoutineProvider({ children }: { children: ReactNode }) {
   const [initial] = useState(() => loadState());
   const [state, setState] = useState(initial.state);
+  const stateRef = useRef(initial.state);
   const [notice, setNotice] = useState<string | null>(initial.message ?? null);
   const [storageError, setStorageError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const writeState = useCallback((next: RoutineState) => {
     try {
-      saveState(state);
+      saveState(next);
       window.setTimeout(() => setStorageError(null), 0);
     } catch {
       window.setTimeout(() => setStorageError('تعذّر حفظ آخر تغيير. قد تكون مساحة التخزين ممتلئة.'), 0);
     }
-  }, [state]);
+  }, []);
+
+  const updateState = useCallback((updater: (current: RoutineState) => RoutineState) => {
+    const current = stateRef.current;
+    const next = updater(current);
+    if (next === current) return;
+    stateRef.current = next;
+    writeState(next);
+    setState(next);
+  }, [writeState]);
+
+  useEffect(() => {
+    writeState(stateRef.current);
+  }, [writeState]);
 
   useEffect(() => {
     document.documentElement.dataset.reduceMotion = state.settings.reducedMotion ? 'true' : 'false';
@@ -67,13 +81,13 @@ export function RoutineProvider({ children }: { children: ReactNode }) {
 
   const actions = useMemo<RoutineActions>(() => ({
     togglePrayer(date, prayer) {
-      setState((current) => updateDay(current, date, (day) => ({
+      updateState((current) => updateDay(current, date, (day) => ({
         ...day,
         prayers: { ...day.prayers, [prayer]: !day.prayers[prayer] },
       })));
     },
     updateSessionTimer(date, session, command, now = Date.now()) {
-      setState((current) => updateDay(current, date, (day) => {
+      updateState((current) => updateDay(current, date, (day) => {
         const timer = day.sessions[session];
         const nextTimer = command === 'start'
           ? startTimer(timer, now)
@@ -86,13 +100,13 @@ export function RoutineProvider({ children }: { children: ReactNode }) {
       }));
     },
     updateSessionNote(date, session, note) {
-      setState((current) => updateDay(current, date, (day) => ({
+      updateState((current) => updateDay(current, date, (day) => ({
         ...day,
         sessionNotes: { ...day.sessionNotes, [session]: note.slice(0, 500) },
       })));
     },
     setTaskStatus(date, taskId, status) {
-      setState((current) => updateDay(current, date, (day) => {
+      updateState((current) => updateDay(current, date, (day) => {
         const taskStatuses = { ...day.taskStatuses };
         if (status === null) delete taskStatuses[taskId];
         else taskStatuses[taskId] = status;
@@ -100,27 +114,27 @@ export function RoutineProvider({ children }: { children: ReactNode }) {
       }));
     },
     toggleMovement(date) {
-      setState((current) => updateDay(current, date, (day) => ({ ...day, movementCompleted: !day.movementCompleted })));
+      updateState((current) => updateDay(current, date, (day) => ({ ...day, movementCompleted: !day.movementCompleted })));
     },
     setDayNotes(date, notes) {
-      setState((current) => updateDay(current, date, (day) => ({ ...day, notes: notes.slice(0, 2000) })));
+      updateState((current) => updateDay(current, date, (day) => ({ ...day, notes: notes.slice(0, 2000) })));
     },
     addDateOverride(override) {
-      setState((current) => ({ ...current, dateOverrides: addOverride(current.dateOverrides, override) }));
+      updateState((current) => ({ ...current, dateOverrides: addOverride(current.dateOverrides, override) }));
     },
     removeDateOverride(id) {
-      setState((current) => ({ ...current, dateOverrides: removeOverrideById(current.dateOverrides, id) }));
+      updateState((current) => ({ ...current, dateOverrides: removeOverrideById(current.dateOverrides, id) }));
     },
     restoreDate(date) {
-      setState((current) => ({ ...current, dateOverrides: removeOverridesForSingleDate(current.dateOverrides, date) }));
+      updateState((current) => ({ ...current, dateOverrides: removeOverridesForSingleDate(current.dateOverrides, date) }));
     },
     startWorkout(workoutId, scheduledFor, date = toDateKey(new Date()), now = Date.now()) {
-      setState((current) => current.workout.active
+      updateState((current) => current.workout.active
         ? current
         : { ...current, workout: { ...current.workout, active: createActiveWorkout(workoutId, date, scheduledFor, now) } });
     },
     updateWorkoutTimer(command, now = Date.now()) {
-      setState((current) => {
+      updateState((current) => {
         const active = current.workout.active;
         if (!active) return current;
         const timer = command === 'start'
@@ -132,7 +146,7 @@ export function RoutineProvider({ children }: { children: ReactNode }) {
       });
     },
     updateWorkoutLog(exerciseId, setIndex, value) {
-      setState((current) => {
+      updateState((current) => {
         const active = current.workout.active;
         const log = active?.logs[exerciseId];
         if (!active || !log || setIndex < 0 || setIndex >= log.values.length) return current;
@@ -148,7 +162,7 @@ export function RoutineProvider({ children }: { children: ReactNode }) {
       });
     },
     updateWorkoutMeta(field, value) {
-      setState((current) => {
+      updateState((current) => {
         const active = current.workout.active;
         if (!active) return current;
         if (field === 'rating') {
@@ -160,22 +174,22 @@ export function RoutineProvider({ children }: { children: ReactNode }) {
       });
     },
     finishWorkout(now = Date.now()) {
-      setState((current) => ({ ...current, workout: finishActiveWorkout(current.workout, now) }));
+      updateState((current) => ({ ...current, workout: finishActiveWorkout(current.workout, now) }));
     },
     cancelWorkout() {
-      setState((current) => ({ ...current, workout: { ...current.workout, active: null } }));
+      updateState((current) => ({ ...current, workout: { ...current.workout, active: null } }));
     },
     deleteDate(date, includeOverrides) {
-      setState((current) => deleteDayData(current, date, includeOverrides));
+      updateState((current) => deleteDayData(current, date, includeOverrides));
       setNotice('حُذفت بيانات هذا اليوم فقط.');
     },
     updateSettings(patch) {
-      setState((current) => ({ ...current, settings: { ...current.settings, ...patch } }));
+      updateState((current) => ({ ...current, settings: { ...current.settings, ...patch } }));
     },
     dismissNotice() {
       setNotice(null);
     },
-  }), []);
+  }), [updateState]);
 
   const value = useMemo(() => ({ state, actions, notice, storageError }), [state, actions, notice, storageError]);
   return <RoutineContext.Provider value={value}>{children}</RoutineContext.Provider>;
