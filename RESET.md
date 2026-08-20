@@ -1,1 +1,1 @@
-reset
+Routine7 clean workspace
