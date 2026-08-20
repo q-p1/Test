@@ -99,6 +99,7 @@ export interface ExerciseDefinition {
   sets: number;
   target: string;
   restSeconds: number;
+  restLabel?: string;
   instruction: string;
   technique: string;
   commonMistake: string;

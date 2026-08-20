@@ -1,4 +1,5 @@
 import { useRoutine } from '../state/RoutineContext';
+import { exerciseRestLabel } from '../data/exercises';
 import type { ExerciseDefinition } from '../types';
 import { BottomSheet } from './BottomSheet';
 import { ExerciseVisual } from './ExerciseVisual';
@@ -13,12 +14,12 @@ export function ExerciseDetailSheet({ exercise, open, onClose }: { exercise: Exe
       <div className="exercise-detail">
         <ExerciseVisual exercise={exercise} large />
         {exercise.imageStatus !== 'verified-pdf' && (
-          <div className="source-warning"><Icon name="info" /><span>لم يصل ملف الخطة الأصلي للتحقق من الرسم؛ لذلك يظهر مكانه placeholder بدل صورة خاطئة.</span></div>
+          <div className="source-warning"><Icon name="info" /><span>لا توجد في ملف الخطة صورة مطابقة موثوقة لهذا التمرين؛ لذلك نعرض مكانًا واضحًا بدل ربطه بحركة خاطئة.</span></div>
         )}
         <div className="detail-stat-grid">
           <div><span>الجولات</span><strong>{exercise.sets}</strong></div>
           <div><span>الهدف</span><strong>{exercise.target}</strong></div>
-          <div><span>الراحة</span><strong>{exercise.restSeconds} ثانية</strong></div>
+          <div><span>الراحة</span><strong>{exerciseRestLabel(exercise)}</strong></div>
         </div>
         <section className="detail-copy"><span className="eyebrow">طريقة بسيطة</span><p>{exercise.instruction}</p></section>
         <div className="coaching-grid">

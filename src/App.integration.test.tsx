@@ -110,10 +110,11 @@ describe('full interaction regression', () => {
   it('shows polished missing-image states instead of a wrong or broken image', () => {
     renderApp();
     navigate('التمارين');
-    expect(document.querySelectorAll('.exercise-placeholder').length).toBeGreaterThan(10);
-    fireEvent.click(document.querySelector<HTMLButtonElement>('.exercise-card__button')!);
+    expect(document.querySelectorAll('.exercise-placeholder')).toHaveLength(2);
+    expect(document.querySelectorAll('.exercise-visual img')).toHaveLength(17);
+    fireEvent.click(screen.getByRole('button', { name: 'عرض تفاصيل ديد بغ' }));
     const dialog = screen.getByRole('dialog');
     expect(within(dialog).getByText('لن نعرض حركة غير مؤكدة')).toBeVisible();
-    expect(within(dialog).queryByRole('img', { name: /شرح حركة/ })).not.toBeInTheDocument();
+    expect(within(dialog).queryByRole('img', { name: /الرسم الأصلي/ })).not.toBeInTheDocument();
   });
 });

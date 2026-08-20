@@ -142,10 +142,12 @@ test('corrupted storage and missing exercise images recover without broken UI', 
   await page.goto('/');
   await expect(page.getByText(/تم تجاهل بيانات تالفة/)).toBeVisible();
   await page.getByRole('button', { name: 'التمارين' }).click();
-  await expect(page.locator('.exercise-placeholder').first()).toBeVisible();
-  await page.locator('.exercise-card__button').first().click();
-  await expect(page.getByRole('dialog')).toContainText('لن نعرض حركة غير مؤكدة');
-  await expect(page.locator('img')).toHaveCount(0);
+  await expect(page.locator('.exercise-placeholder')).toHaveCount(2);
+  await expect(page.locator('img[src$="pushups.webp"]')).toBeVisible();
+  await page.getByRole('button', { name: 'عرض تفاصيل ديد بغ' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog).toContainText('لن نعرض حركة غير مؤكدة');
+  await expect(dialog.locator('img')).toHaveCount(0);
   await assertNoHorizontalOverflow(page);
 });
 

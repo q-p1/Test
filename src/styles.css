@@ -1365,6 +1365,7 @@ select:focus-visible,
 
 .library-summary {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
@@ -1409,13 +1410,13 @@ select:focus-visible,
 .exercise-visual {
   position: relative;
   inline-size: 100%;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: 4 / 3;
   overflow: hidden;
   background: #e8e4dc;
 }
 
 .exercise-visual--large {
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 4 / 5;
   border: 1px solid var(--line);
   border-radius: var(--radius-md);
 }
@@ -1423,9 +1424,14 @@ select:focus-visible,
 .exercise-visual img {
   inline-size: 100%;
   block-size: 100%;
+  object-fit: cover;
+  object-position: center top;
+  background: #f0ede7;
+}
+
+.exercise-visual--large img {
   object-fit: contain;
   object-position: center;
-  background: #f0ede7;
 }
 
 .exercise-placeholder {

@@ -20,6 +20,8 @@ export function LibraryPage() {
     const matchesQuery = !normalized || `${exercise.arabicName} ${exercise.englishName}`.toLocaleLowerCase('ar').includes(normalized);
     return matchesFilter && matchesQuery;
   }), [filter, query]);
+  const verifiedCount = exercises.filter((exercise) => exercise.imageStatus === 'verified-pdf').length;
+  const missingCount = exercises.length - verifiedCount;
 
   return (
     <div className="page page--library" data-page="library">
@@ -36,7 +38,7 @@ export function LibraryPage() {
           <button type="button" className={filter === 'main' ? 'is-active' : ''} onClick={() => setFilter('main')}>الأساسية</button>
         </div>
       </div>
-      <div className="library-summary"><span>{exercises.length} تمرينًا</span><span><Icon name="image" /> الصور الأصلية قيد انتظار ملف الخطة</span></div>
+      <div className="library-summary"><span>{exercises.length} تمرينًا</span><span><Icon name="image" /> {verifiedCount} بصورة أصلية{missingCount > 0 ? ` · ${missingCount} دون مطابقة` : ''}</span></div>
       {exercises.length > 0 ? (
         <section className="exercise-grid" aria-labelledby="exercise-list-title">
           <h2 id="exercise-list-title" className="sr-only">قائمة التمارين</h2>

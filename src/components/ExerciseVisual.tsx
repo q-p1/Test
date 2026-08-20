@@ -10,7 +10,7 @@ export function ExerciseVisual({ exercise, large = false }: { exercise: Exercise
       {showImage ? (
         <img
           src={exercise.image}
-          alt={`شرح حركة ${exercise.arabicName}`}
+          alt={`الرسم الأصلي لتمرين ${exercise.arabicName} من خطة التمارين`}
           loading="lazy"
           decoding="async"
           onError={() => setFailed(true)}
@@ -18,8 +18,8 @@ export function ExerciseVisual({ exercise, large = false }: { exercise: Exercise
       ) : (
         <div className="exercise-placeholder" role="img" aria-label={`لا توجد صورة موثوقة لتمرين ${exercise.arabicName}`}>
           <Icon name="image" />
-          <strong>الصورة الأصلية غير متوفرة</strong>
-          <span>لن نعرض حركة غير مؤكدة</span>
+          <strong>{failed ? 'تعذّر تحميل الصورة الأصلية' : 'لا توجد صورة مطابقة في الخطة'}</strong>
+          <span>{failed ? 'بقية تفاصيل التمرين ما زالت متاحة' : 'لن نعرض حركة غير مؤكدة'}</span>
         </div>
       )}
     </div>

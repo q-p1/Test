@@ -1,7 +1,7 @@
 # حالة QA — روتيني
 
 التاريخ: 2026-08-20  
-الحالة: **المنطق والبناء ناجحان؛ التسليم الكامل متوقف على ملف PDF وتشغيل WebKit المرئي.**
+الحالة: **المنطق والبناء وصور المصدر ناجحة محليًا؛ تشغيل WebKit المرئي على GitHub Actions قيد التنفيذ.**
 
 ## نتائج منفذة
 
@@ -9,14 +9,14 @@
 |---|---|
 | TypeScript | ناجح بلا أخطاء |
 | ESLint | ناجح بلا أخطاء |
-| Vitest + Testing Library + axe-core | 29/29 ناجحة |
+| Vitest + Testing Library + axe-core | 32/32 ناجحة |
 | Production build | ناجح |
 | أصول HTML/CSS/JS/icons | المراجع موجودة ومحلية |
 | Service worker static verification | ناجح |
 | Service worker runtime simulation | install/activate/update/cache cleanup/subpath/atomic shell ناجحة |
 | Playwright local server startup | ناجح |
-| Playwright WebKit execution | متوقف قبل فتح الصفحة: WebKit غير مثبت في runner الحالي |
-| PDF exercise extraction | متوقف: الملف غير موجود في مساحة العمل |
+| Playwright WebKit execution | جاهز للتشغيل عبر Heavy QA على GitHub Actions |
+| PDF exercise extraction | ناجح: 16 أصلًا فريدًا، 17 تمرينًا مرتبطًا، وتمرينان بلا صورة موثوقة |
 | Deployment | لم يُنفذ |
 
 ## التغطية الوظيفية الآلية
@@ -34,6 +34,8 @@
 - حذف بيانات تاريخ واحد مع بقاء الإعدادات والأيام السابقة وسجل الأيام الأخرى.
 - axe-core على Today وFitness وExercise Library وSettings دون مخالفات DOM مكتشفة.
 - missing-image state يعرض placeholder ولا يعرض صورة حركة خاطئة.
+- جرد صور الـPDF، سلامة WebP، حدود الحجم، المسارات المحلية، ودخول كل صورة في precache.
+- تطابق sets/reps/holds/rest لكل تمرين مع تفاصيل الخطة المرفقة.
 
 ## اختبارات WebKit الجاهزة
 
@@ -57,8 +59,12 @@ npx playwright install --with-deps webkit
 npm run test:e2e
 ```
 
-## موانع الإغلاق
+## المتبقي للإغلاق
 
-1. إعادة إرفاق ملف PDF الأصلي، ثم استخراج الصور ومطابقتها ومراجعة الأسماء والجرعات التدريبية ضده.
-2. تشغيل Heavy QA workflow أو Playwright على جهاز/runner يدعم WebKit، ثم مراجعة screenshots بصريًا وإصلاح أي عيب يظهر.
-3. لا يتم Preview أو Production قبل إغلاق النقطتين أعلاه.
+1. تشغيل Heavy QA workflow على GitHub Actions ومراجعة screenshots بصريًا وإصلاح أي عيب يظهر.
+2. توثيق النتيجة النهائية هنا. لا يتم Preview أو Production ضمن هذه العملية.
+
+## حدود صور المصدر
+
+- **ديد بغ:** موضعه في صفحة 6 يحتوي رسمًا مكررًا لتمرين آخر، لذلك لم يُربط بصورة خاطئة.
+- **الاندفاع الخلفي:** موضعه في صفحة 7 بلا رسم، لذلك بقي placeholder محترمًا.

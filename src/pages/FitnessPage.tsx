@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { EXERCISE_MAP, WORKOUTS, WARMUP_IDS } from '../data/exercises';
+import { EXERCISE_MAP, WORKOUTS, WARMUP_IDS, exerciseRestLabel } from '../data/exercises';
 import { useNow } from '../hooks/useNow';
 import { findNextUnfinishedWorkout, getCycleInfo, getWeeklyWorkoutHistory, scheduledWorkoutForDate } from '../lib/fitness';
 import { formatArabicDate, toDateKey } from '../lib/date';
@@ -95,7 +95,7 @@ export function FitnessPage() {
               if (!exercise || !log) return null;
               return (
                 <article className="active-exercise" key={exerciseId}>
-                  <button type="button" className="active-exercise__title" onClick={() => setSelectedExercise(exercise)}><span>{exerciseIndex + 1}</span><div><h3>{exercise.arabicName}</h3><p>{exercise.target} · راحة {exercise.restSeconds}ث</p></div><Icon name="chevron-left" /></button>
+                  <button type="button" className="active-exercise__title" onClick={() => setSelectedExercise(exercise)}><span>{exerciseIndex + 1}</span><div><h3>{exercise.arabicName}</h3><p>{exercise.target} · راحة {exerciseRestLabel(exercise)}</p></div><Icon name="chevron-left" /></button>
                   <div className="set-inputs set-inputs--inline">
                     {log.values.map((value, index) => (
                       <label key={index}><span>جولة {index + 1}</span><input aria-label={`${exercise.arabicName} الجولة ${index + 1}`} inputMode="numeric" type="number" min="0" max="999" value={value ?? ''} onChange={(event) => actions.updateWorkoutLog(exerciseId, index, event.target.value === '' ? null : Number(event.target.value))} /><small>{exercise.metric === 'seconds' ? 'ث' : 'عدة'}</small></label>

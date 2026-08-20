@@ -1,4 +1,5 @@
 import type { ExerciseDefinition } from '../types';
+import { exerciseRestLabel } from '../data/exercises';
 import { ExerciseVisual } from './ExerciseVisual';
 import { Icon } from './Icon';
 
@@ -12,7 +13,7 @@ export function ExerciseCard({ exercise, best, onOpen }: { exercise: ExerciseDef
           <div className="exercise-card__meta">
             <span><strong>{exercise.sets}</strong> جولات</span>
             <span>{exercise.target}</span>
-            <span>راحة {exercise.restSeconds}ث</span>
+            <span>راحة {exerciseRestLabel(exercise)}</span>
           </div>
           {best !== undefined && best !== null && <span className="best-chip"><Icon name="award" /> أفضل نتيجة: {best} {exercise.metric === 'seconds' ? 'ث' : 'تكرار'}</span>}
         </div>
