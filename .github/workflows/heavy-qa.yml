@@ -3,6 +3,9 @@ name: Heavy QA
 on:
   workflow_dispatch:
   pull_request:
+  push:
+    branches:
+      - feat/routine-pwa
 
 permissions:
   contents: read
