@@ -2,9 +2,10 @@ import { expect, test, type Page } from '@playwright/test';
 
 const storageKey = 'routine.app.state';
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => localStorage.clear());
-});
+// Playwright creates an isolated browser context for every test. Do not clear
+// localStorage in an init script: init scripts also run after page.reload(),
+// which would invalidate the persistence scenarios these tests are designed
+// to verify.
 
 test('fresh install renders a styled RTL app with stable navigation and no overflow', async ({ page }) => {
   const errors: string[] = [];
