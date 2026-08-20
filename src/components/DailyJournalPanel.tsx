@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useNow } from '../hooks/useNow';
 import { calculateDayScore, calculateStreak, getWeekSnapshot } from '../lib/dailyMetrics';
-import { formatClock, toDateKey } from '../lib/date';
+import { toDateKey } from '../lib/date';
 import { getDayRecord } from '../lib/storage';
 import { useRoutine } from '../state/RoutineContext';
 import type { DailyLogKind, DateKey } from '../types';
