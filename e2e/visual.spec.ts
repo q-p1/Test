@@ -2,8 +2,9 @@ import { expect, test, type Page } from '@playwright/test';
 
 const storageKey = 'routine.app.state';
 
-test.beforeEach(async (_fixtures, testInfo) => {
+test.beforeEach(async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== 'iphone-13', 'Visual QA is captured once at the central iPhone size.');
+  await page.emulateMedia({ reducedMotion: 'reduce' });
 });
 
 test('capture core screens and states', async ({ page }) => {
