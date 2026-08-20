@@ -18,10 +18,10 @@ test('fresh install renders a styled RTL app with stable navigation and no overf
   const serviceWorkerScope = await page.evaluate(async () => (await navigator.serviceWorker.ready).scope);
   expect(serviceWorkerScope).toBe('http://127.0.0.1:4173/');
   await assertNoHorizontalOverflow(page);
-  await page.getByRole('button', { name: 'الرياضة' }).click();
+  await navigate(page, 'الرياضة');
   await expect(page.locator('[data-page="fitness"]')).toBeVisible();
   await assertNoHorizontalOverflow(page);
-  await page.getByRole('button', { name: 'التمارين' }).click();
+  await navigate(page, 'التمارين');
   await expect(page.locator('[data-page="library"]')).toBeVisible();
   await assertNoHorizontalOverflow(page);
   expect(errors).toEqual([]);
@@ -80,8 +80,8 @@ test('day override sheet saves, restores, and distinguishes a tahfiz trip', asyn
   const tripDialog = page.getByRole('dialog');
   await tripDialog.getByRole('button', { name: /رحلة تحفيظ/ }).click();
   await tripDialog.getByLabel(/الاسم/).fill('رحلة التحفيظ');
-  await tripDialog.getByLabel('من').fill('16:10');
-  await tripDialog.getByLabel('إلى').fill('18:00');
+  await tripDialog.getByLabel('من', { exact: true }).fill('16:10');
+  await tripDialog.getByLabel('إلى', { exact: true }).fill('18:00');
   await tripDialog.getByRole('button', { name: 'حفظ الاستثناء' }).click();
   await tripDialog.getByRole('button', { name: 'إغلاق النافذة' }).click();
   await expect(page.locator('.timeline-card').filter({ hasText: 'رحلة التحفيظ' })).toBeVisible();
@@ -91,7 +91,7 @@ test('day override sheet saves, restores, and distinguishes a tahfiz trip', asyn
 
 test('workout set logs survive reload and completion is written once', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'الرياضة' }).click();
+  await navigate(page, 'الرياضة');
   await page.getByRole('button', { name: /بدء الحصة/ }).click();
   const firstExercise = page.locator('.active-exercise').first();
   const inputs = firstExercise.locator('input[type="number"]');
@@ -99,7 +99,7 @@ test('workout set logs survive reload and completion is written once', async ({ 
   await inputs.nth(1).fill('9');
   await inputs.nth(2).fill('8');
   await page.reload();
-  await page.getByRole('button', { name: 'الرياضة' }).click();
+  await navigate(page, 'الرياضة');
   const restoredInputs = page.locator('.active-exercise').first().locator('input[type="number"]');
   await expect(restoredInputs.nth(0)).toHaveValue('10');
   await expect(restoredInputs.nth(1)).toHaveValue('9');
@@ -107,7 +107,7 @@ test('workout set logs survive reload and completion is written once', async ({ 
   await page.getByRole('button', { name: /إنهاء وحفظ الحصة/ }).click();
   await expect(page.locator('.history-list > div')).toHaveCount(1);
   await page.reload();
-  await page.getByRole('button', { name: 'الرياضة' }).click();
+  await navigate(page, 'الرياضة');
   await expect(page.locator('.history-list > div')).toHaveCount(1);
 });
 
@@ -124,11 +124,11 @@ test('missed workout remains next and delete-day preserves settings and prior da
     localStorage.setItem(key, JSON.stringify(state));
   }, storageKey);
   await page.reload();
-  await page.getByRole('button', { name: 'الرياضة' }).click();
+  await navigate(page, 'الرياضة');
   await expect(page.locator('.next-workout-card__letter')).toHaveText('B');
   await expect(page.getByText(/سنكمل/)).toContainText('B');
 
-  await page.getByRole('button', { name: 'الإعدادات' }).click();
+  await navigate(page, 'الإعدادات');
   await page.getByRole('button', { name: /حذف بيانات هذا اليوم/ }).click();
   await page.getByRole('dialog').getByRole('button', { name: 'حذف هذا اليوم فقط' }).click();
   const surviving = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), storageKey);
@@ -141,9 +141,9 @@ test('corrupted storage and missing exercise images recover without broken UI', 
   await page.addInitScript((key) => localStorage.setItem(key, '{broken'), storageKey);
   await page.goto('/');
   await expect(page.getByText(/تم تجاهل بيانات تالفة/)).toBeVisible();
-  await page.getByRole('button', { name: 'التمارين' }).click();
+  await navigate(page, 'التمارين');
   await expect(page.locator('.exercise-placeholder')).toHaveCount(2);
-  await expect(page.locator('img[src$="pushups.webp"]')).toBeVisible();
+  await expect(page.getByRole('img', { name: 'الرسم الأصلي لتمرين الضغط من خطة التمارين', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'عرض تفاصيل ديد بغ' }).click();
   const dialog = page.getByRole('dialog');
   await expect(dialog).toContainText('لن نعرض حركة غير مؤكدة');
@@ -154,4 +154,8 @@ test('corrupted storage and missing exercise images recover without broken UI', 
 async function assertNoHorizontalOverflow(page: Page) {
   const overflow = await page.evaluate(() => ({ width: document.documentElement.scrollWidth, viewport: window.innerWidth }));
   expect(overflow.width).toBeLessThanOrEqual(overflow.viewport + 1);
+}
+
+async function navigate(page: Page, label: 'اليوم' | 'الرياضة' | 'التمارين' | 'الإعدادات') {
+  await page.getByRole('navigation', { name: 'التنقل الرئيسي' }).getByRole('button', { name: label, exact: true }).click();
 }

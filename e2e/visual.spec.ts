@@ -11,25 +11,25 @@ test('capture core screens and states', async ({ page }) => {
   await page.goto('/');
   await capture(page, 'today');
 
-  await page.getByRole('button', { name: 'الرياضة' }).click();
+  await navigate(page, 'الرياضة');
   await capture(page, 'fitness');
 
-  await page.getByRole('button', { name: 'التمارين' }).click();
+  await navigate(page, 'التمارين');
   await capture(page, 'exercise-library');
   await page.locator('.exercise-card__button').first().click();
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.screenshot({ path: 'visual-qa/exercise-detail.png', fullPage: false });
   await page.getByRole('dialog').getByRole('button', { name: 'إغلاق النافذة' }).click();
 
-  await page.getByRole('button', { name: 'الإعدادات' }).click();
+  await navigate(page, 'الإعدادات');
   await capture(page, 'settings');
 
-  await page.getByRole('button', { name: 'اليوم' }).click();
+  await navigate(page, 'اليوم');
   await page.getByRole('button', { name: 'تعديل هذا اليوم' }).click();
   await page.screenshot({ path: 'visual-qa/day-override-sheet.png', fullPage: false });
   await page.getByRole('dialog').getByRole('button', { name: 'إغلاق النافذة' }).click();
 
-  await page.getByRole('button', { name: 'التمارين' }).click();
+  await navigate(page, 'التمارين');
   await page.getByRole('searchbox').fill('لا يوجد إطلاقًا');
   await capture(page, 'empty-state');
 });
@@ -71,4 +71,8 @@ async function capture(page: Page, name: string) {
   await page.screenshot({ path: `visual-qa/${name}.png`, fullPage: true });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+}
+
+async function navigate(page: Page, label: 'اليوم' | 'الرياضة' | 'التمارين' | 'الإعدادات') {
+  await page.getByRole('navigation', { name: 'التنقل الرئيسي' }).getByRole('button', { name: label, exact: true }).click();
 }
