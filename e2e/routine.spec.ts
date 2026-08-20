@@ -72,8 +72,8 @@ test('rich prayer, Tahfiz, and Qudurat details persist together', async ({ page 
   await tahfiz.getByRole('button', { name: 'تخطيته بقصد' }).click();
   await tahfiz.getByLabel('حفظ جديد').fill('سورة الملك 1-10');
   await tahfiz.getByLabel('مراجعة').fill('جزء عم');
-  await tahfiz.getByLabel('تسميع').fill('سورة النبأ');
-  await tahfiz.getByLabel('أخطاء التسميع').fill('2');
+  await tahfiz.getByLabel('تسميع', { exact: true }).fill('سورة النبأ');
+  await tahfiz.getByLabel('أخطاء التسميع', { exact: true }).fill('2');
 
   const qudurat = page.getByTestId('qudurat-session');
   await qudurat.getByLabel('الدرس / الفيديو').fill('النسب والتناسب');
@@ -124,6 +124,7 @@ test('daily journal, quick logs, recurring routine, and backup survive real UI f
   expect(download.suggestedFilename()).toMatch(/^routine-backup-\d{4}-\d{2}-\d{2}\.json$/);
 
   await page.reload();
+  await navigate(page, 'الإعدادات');
   await expect(page.locator('.recurring-list')).toContainText('قراءة يومية');
   const persisted = await page.evaluate((key) => {
     const state = JSON.parse(localStorage.getItem(key)!);
