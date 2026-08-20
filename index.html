@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+    <meta name="theme-color" content="#0b213a" />
+    <meta name="color-scheme" content="light" />
+    <meta name="application-name" content="روتيني" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="روتيني" />
+    <meta name="format-detection" content="telephone=no" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./icons/icon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png" />
+    <title>روتيني</title>
+    <style>
+      :root { color: #14263a; background: #f4f1ea; font-family: -apple-system, BlinkMacSystemFont, "SF Arabic", "Geeza Pro", Tahoma, sans-serif; }
+      * { box-sizing: border-box; }
+      html, body, #root { min-height: 100%; margin: 0; }
+      body { background: #f4f1ea; }
+      .boot-shell { min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: #0b213a; color: #fffaf0; }
+      .boot-mark { width: 64px; height: 64px; display: grid; place-items: center; border: 1px solid #cfad70; border-radius: 20px; color: #cfad70; font-size: 28px; font-weight: 800; }
+      .boot-shell p { margin: 14px 0 0; font-size: 15px; }
+    </style>
+  </head>
+  <body>
+    <div id="root">
+      <main class="boot-shell" aria-label="جارٍ فتح روتيني">
+        <div>
+          <div class="boot-mark" aria-hidden="true">ر</div>
+          <p>نرتّب يومك...</p>
+        </div>
+      </main>
+    </div>
+    <noscript>يحتاج روتيني إلى JavaScript ليعمل.</noscript>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>

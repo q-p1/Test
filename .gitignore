@@ -1,0 +1,12 @@
+node_modules/
+dist/
+dist-e2e/
+coverage/
+.playwright-browsers/
+.browser-runtime/
+playwright-report/
+test-results/
+visual-qa/
+tmp/
+*.tsbuildinfo
+.DS_Store
