@@ -59,6 +59,85 @@ test('prayers and timestamp timers persist through reload and long absence', asy
   await expect(page.getByTestId('qudurat-session').locator('.timer-display')).toContainText('01:15:');
 });
 
+test('rich prayer, Tahfiz, and Qudurat details persist together', async ({ page }) => {
+  await page.goto('/');
+
+  const fajr = page.getByRole('button', { name: /الفجر/ });
+  await fajr.click();
+  await page.getByRole('button', { name: 'في وقتها' }).click();
+  await page.getByRole('button', { name: 'بالجماعة' }).click();
+  await page.getByLabel('وقت الأداء').fill('05:02');
+
+  const tahfiz = page.getByTestId('tahfiz-session');
+  await tahfiz.getByRole('button', { name: 'تخطيته بقصد' }).click();
+  await tahfiz.getByLabel('حفظ جديد').fill('سورة الملك 1-10');
+  await tahfiz.getByLabel('مراجعة').fill('جزء عم');
+  await tahfiz.getByLabel('تسميع').fill('سورة النبأ');
+  await tahfiz.getByLabel('أخطاء التسميع').fill('2');
+
+  const qudurat = page.getByTestId('qudurat-session');
+  await qudurat.getByLabel('الدرس / الفيديو').fill('النسب والتناسب');
+  await qudurat.getByLabel('الأسئلة').fill('20');
+  await qudurat.getByLabel('الصحيح').fill('17');
+  await qudurat.getByLabel('أخطاء راجعتها').fill('3');
+  await expect(qudurat.locator('.accuracy-tile')).toContainText('85%');
+
+  await page.reload();
+  const persisted = await page.evaluate((key) => {
+    const state = JSON.parse(localStorage.getItem(key)!);
+    const date = Object.keys(state.days).sort().at(-1)!;
+    return state.days[date];
+  }, storageKey);
+  expect(persisted.prayerDetails.fajr).toMatchObject({ performedAt: '05:02', timing: 'on-time', congregation: 'yes' });
+  expect(persisted.tahfiz).toMatchObject({ status: 'skipped-intentionally', newMemorization: 'سورة الملك 1-10', review: 'جزء عم', recitation: 'سورة النبأ', mistakes: 2 });
+  expect(persisted.qudurat).toMatchObject({ lessonName: 'النسب والتناسب', questions: 20, correct: 17, mistakesReviewed: 3 });
+  await expect(page.getByTestId('tahfiz-session').getByRole('button', { name: 'تخطيته بقصد' })).toHaveAttribute('aria-pressed', 'true');
+  await assertNoHorizontalOverflow(page);
+});
+
+test('daily journal, quick logs, recurring routine, and backup survive real UI flow', async ({ page }) => {
+  await page.goto('/');
+
+  const journal = page.locator('.journal-section');
+  await journal.getByLabel('وقت الصحوة').fill('05:10');
+  await journal.getByRole('button', { name: /بدأ يومي/ }).click();
+  await journal.getByRole('button', { name: 'موية', exact: true }).click();
+  await journal.getByRole('button', { name: 'وجبة', exact: true }).click();
+  await journal.getByLabel('الاسم').fill('مراجعة مشروع');
+  await journal.getByLabel('ملاحظة اختيارية').fill('نصف ساعة تركيز');
+  await journal.getByRole('button', { name: /سجل الآن/ }).click();
+  await expect(journal.locator('.journal-log-list')).toContainText('مراجعة مشروع');
+  await journal.getByLabel('وقت النوم').fill('22:40');
+  await journal.getByRole('button', { name: /انتهى يومي/ }).click();
+
+  await navigate(page, 'الإعدادات');
+  const recurring = page.locator('.recurring-form');
+  await recurring.getByLabel('اسم الفقرة').fill('قراءة يومية');
+  await recurring.getByLabel('من').fill('17:20');
+  await recurring.getByLabel('إلى').fill('17:50');
+  await recurring.getByRole('button', { name: /إضافة للجدول/ }).click();
+  await expect(page.locator('.recurring-list')).toContainText('قراءة يومية');
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: /تصدير نسخة احتياطية JSON/ }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^routine-backup-\d{4}-\d{2}-\d{2}\.json$/);
+
+  await page.reload();
+  await expect(page.locator('.recurring-list')).toContainText('قراءة يومية');
+  const persisted = await page.evaluate((key) => {
+    const state = JSON.parse(localStorage.getItem(key)!);
+    const date = Object.keys(state.days).sort().at(-1)!;
+    return { day: state.days[date], baseSchedule: state.baseSchedule };
+  }, storageKey);
+  expect(persisted.day.wakeTime).toBe('05:10');
+  expect(persisted.day.bedTime).toBe('22:40');
+  expect(persisted.day.logs.some((entry: { label: string }) => entry.label === 'موية')).toBe(true);
+  expect(persisted.day.logs.some((entry: { label: string }) => entry.label === 'مراجعة مشروع')).toBe(true);
+  expect(Object.values(persisted.baseSchedule).flat().some((entry: any) => entry.title === 'قراءة يومية')).toBe(true);
+  await assertNoHorizontalOverflow(page);
+});
+
 test('day override sheet saves, restores, and distinguishes a tahfiz trip', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'تعديل هذا اليوم' }).click();
