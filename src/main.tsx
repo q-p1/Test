@@ -5,6 +5,7 @@ import { AppErrorBoundary } from './components/AppErrorBoundary';
 import { registerServiceWorker } from './lib/registerServiceWorker';
 import { RoutineProvider } from './state/RoutineContext';
 import './styles.css';
+import './rich-tracking.css';
 
 document.documentElement.lang = 'ar';
 document.documentElement.dir = 'rtl';
