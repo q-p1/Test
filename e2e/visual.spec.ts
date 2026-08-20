@@ -95,5 +95,9 @@ async function warmLazyImages(page: Page) {
 }
 
 async function navigate(page: Page, label: 'اليوم' | 'الرياضة' | 'التمارين' | 'الإعدادات') {
-  await page.getByRole('navigation', { name: 'التنقل الرئيسي' }).getByRole('button', { name: label, exact: true }).click();
+  const destination = page
+    .getByRole('navigation', { name: 'التنقل الرئيسي' })
+    .getByRole('button', { name: label, exact: true });
+  await destination.click();
+  await expect(destination).toHaveAttribute('aria-current', 'page');
 }

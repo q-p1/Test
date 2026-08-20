@@ -2509,10 +2509,9 @@ select:focus-visible,
   inset-inline: 0;
   inset-block-end: 0;
   padding: 7px max(10px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
-  background: rgba(255, 253, 248, 0.96);
+  background: #fffdf8;
   border-top: 1px solid var(--line);
   box-shadow: 0 -8px 28px rgba(7, 22, 37, 0.1);
-  backdrop-filter: blur(14px);
 }
 
 .bottom-nav__inner {
