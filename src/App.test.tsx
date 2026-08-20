@@ -8,6 +8,12 @@ function renderApp() {
   return render(<RoutineProvider><App /></RoutineProvider>);
 }
 
+function firstSavedDate(saved: { days?: Record<string, unknown> }): string {
+  const date = Object.keys(saved.days ?? {})[0];
+  if (!date) throw new Error('Expected the current day to be persisted synchronously.');
+  return date;
+}
+
 afterEach(() => {
   cleanup();
   localStorage.clear();
@@ -21,8 +27,7 @@ describe('app persistence smoke tests', () => {
     fireEvent.click(fajr);
     expect(fajr).toHaveAttribute('aria-pressed', 'true');
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
-    const savedDate = Object.keys(saved.days)[0];
-    if (!savedDate) throw new Error('Expected the current day to be persisted synchronously.');
+    const savedDate = firstSavedDate(saved);
     expect(saved.days[savedDate].prayers.fajr).toBe(true);
     first.unmount();
     renderApp();
@@ -37,7 +42,7 @@ describe('app persistence smoke tests', () => {
     fireEvent.click(screen.getByRole('button', { name: 'في وقتها' }));
     fireEvent.click(screen.getByRole('button', { name: 'بالجماعة' }));
     let saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
-    let date = Object.keys(saved.days)[0];
+    let date = firstSavedDate(saved);
     expect(saved.days[date].prayerDetails.fajr.timing).toBe('on-time');
     expect(saved.days[date].prayerDetails.fajr.congregation).toBe('yes');
 
@@ -47,7 +52,7 @@ describe('app persistence smoke tests', () => {
     expect(screen.getByRole('button', { name: 'في وقتها' })).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: 'بالجماعة' })).toHaveAttribute('aria-pressed', 'true');
     saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
-    date = Object.keys(saved.days)[0];
+    date = firstSavedDate(saved);
     expect(saved.days[date].prayers.fajr).toBe(true);
   });
 
@@ -100,7 +105,7 @@ describe('app persistence smoke tests', () => {
     fireEvent.change(within(qudurat).getByLabelText('الأسئلة'), { target: { value: '10' } });
     fireEvent.change(within(qudurat).getByLabelText('الصحيح'), { target: { value: '12' } });
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY)!);
-    const date = Object.keys(saved.days)[0];
+    const date = firstSavedDate(saved);
     expect(saved.days[date].qudurat.lessonName).toBe('النسب');
     expect(saved.days[date].qudurat.questions).toBe(10);
     expect(saved.days[date].qudurat.correct).toBe(10);
