@@ -7,6 +7,7 @@ import { toDateKey } from '../lib/date';
 import type {
   BaseScheduleItem,
   CongregationStatus,
+  DailyLog,
   DailyLogKind,
   DateKey,
   DateOverride,
@@ -219,11 +220,17 @@ export function RoutineProvider({ children }: { children: ReactNode }) {
       updateState((current) => updateDay(current, date, (day) => {
         if (day.dayStartedAt) return day;
         const clock = sanitizeClock(wakeTime);
+        const log: DailyLog = {
+          id: `day-start-${now}`,
+          kind: 'custom',
+          label: `بدأ يومي${clock ? ` — صحيت ${clock}` : ''}`,
+          createdAt: now,
+        };
         return {
           ...day,
           dayStartedAt: now,
           wakeTime: clock,
-          logs: [...day.logs, { id: `day-start-${now}`, kind: 'custom', label: `بدأ يومي${clock ? ` — صحيت ${clock}` : ''}`, createdAt: now }].slice(-500),
+          logs: [...day.logs, log].slice(-500),
         };
       }));
     },
