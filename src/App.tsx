@@ -36,7 +36,7 @@ export default function App() {
         {page === 'library' && <LibraryPage />}
         {page === 'settings' && <SettingsPage />}
       </main>
-      <BottomNavigation page={page} onChange={changePage} />
+      <BottomNavigation key={page} page={page} onChange={changePage} />
       {(notice || storageError) && (
         <div className={`toast ${storageError ? 'toast--error' : ''}`} role="status"><span>{storageError ?? notice}</span>{notice && <button type="button" aria-label="إغلاق الإشعار" onClick={actions.dismissNotice}><Icon name="close" /></button>}</div>
       )}
