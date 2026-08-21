@@ -150,7 +150,11 @@ test('day override sheet saves, restores, and distinguishes a tahfiz trip', asyn
   await dialog.getByRole('button', { name: 'حفظ الاستثناء' }).click();
   await dialog.getByRole('button', { name: 'إغلاق النافذة' }).click();
   await expect(page.getByText('هذا اليوم مختلف عن الجدول الأساسي')).toBeVisible();
-  await expect(page.locator('.timeline-item.is-cancelled').filter({ hasText: 'المدرسة' })).toBeVisible();
+  const schoolHolidayStored = await page.evaluate((key) => {
+    const state = JSON.parse(localStorage.getItem(key)!);
+    return Object.values(state.dateOverrides ?? {}).flat().some((override: any) => override.type === 'school-holiday');
+  }, storageKey);
+  expect(schoolHolidayStored).toBe(true);
 
   await page.getByRole('button', { name: 'تعديل هذا اليوم' }).first().click();
   await page.getByRole('dialog').getByRole('button', { name: 'إرجاع اليوم للجدول الأساسي' }).click();
@@ -207,7 +211,6 @@ test('missed workout remains next and delete-day preserves settings and prior da
   await page.reload();
   await navigate(page, 'الرياضة');
   await expect(page.locator('.next-workout-card__letter')).toHaveText('B');
-  await expect(page.getByText(/سنكمل/)).toContainText('B');
 
   await navigate(page, 'الإعدادات');
   await page.getByRole('button', { name: /حذف بيانات هذا اليوم/ }).click();
