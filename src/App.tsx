@@ -3,6 +3,7 @@ import { BottomNavigation, type AppPage } from './components/BottomNavigation';
 import { Icon } from './components/Icon';
 import { FitnessPage } from './pages/FitnessPage';
 import { LibraryPage } from './pages/LibraryPage';
+import { SchoolPage } from './pages/SchoolPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { TodayPage } from './pages/TodayPage';
 import { useRoutine } from './state/RoutineContext';
@@ -32,6 +33,7 @@ export default function App() {
       </header>
       <main id="main-content" className="app-main">
         {page === 'today' && <TodayPage onOpenFitness={() => changePage('fitness')} />}
+        {page === 'school' && <SchoolPage />}
         {page === 'fitness' && <FitnessPage />}
         {page === 'library' && <LibraryPage />}
         {page === 'settings' && <SettingsPage />}

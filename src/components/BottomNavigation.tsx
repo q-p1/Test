@@ -1,9 +1,10 @@
 import { Icon, type IconName } from './Icon';
 
-export type AppPage = 'today' | 'fitness' | 'library' | 'settings';
+export type AppPage = 'today' | 'school' | 'fitness' | 'library' | 'settings';
 
 const items: Array<{ id: AppPage; label: string; icon: IconName }> = [
   { id: 'today', label: 'اليوم', icon: 'today' },
+  { id: 'school', label: 'المدرسة', icon: 'school' },
   { id: 'fitness', label: 'الرياضة', icon: 'fitness' },
   { id: 'library', label: 'التمارين', icon: 'library' },
   { id: 'settings', label: 'الإعدادات', icon: 'settings' },
