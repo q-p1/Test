@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { useNow } from '../hooks/useNow';
+import { usePrayerTimes } from '../hooks/usePrayerTimes';
 import { addDays, currentMinutes, formatArabicDate, formatClock, minutesFromTime, toDateKey } from '../lib/date';
+import { applyPrayerScheduleToItems } from '../lib/prayerTimes';
 import { resolveDay } from '../lib/schedule';
 import { getDayRecord } from '../lib/storage';
 import { useRoutine } from '../state/RoutineContext';
@@ -12,9 +14,7 @@ import { PrayerTracker } from '../components/PrayerTracker';
 import { ProgressRing } from '../components/ProgressRing';
 import { SessionTimerCard } from '../components/SessionTimerCard';
 
-interface TodayPageProps {
-  onOpenFitness(): void;
-}
+interface TodayPageProps { onOpenFitness(): void; }
 
 export function TodayPage({ onOpenFitness }: TodayPageProps) {
   const { state, actions } = useRoutine();
@@ -24,7 +24,9 @@ export function TodayPage({ onOpenFitness }: TodayPageProps) {
   const [selectedDate, setSelectedDate] = useState<DateKey>(today);
   const [overrideOpen, setOverrideOpen] = useState(false);
   const day = getDayRecord(state, selectedDate);
-  const resolved = useMemo(() => resolveDay(state.baseSchedule, state.dateOverrides, selectedDate), [state.baseSchedule, state.dateOverrides, selectedDate]);
+  const prayerTimes = usePrayerTimes(selectedDate);
+  const resolvedBase = useMemo(() => resolveDay(state.baseSchedule, state.dateOverrides, selectedDate), [state.baseSchedule, state.dateOverrides, selectedDate]);
+  const resolved = useMemo(() => ({ ...resolvedBase, items: applyPrayerScheduleToItems(resolvedBase.items, prayerTimes.schedule) }), [resolvedBase, prayerTimes.schedule]);
   const prayersDone = Object.values(day.prayers).filter(Boolean).length;
   const statuses = useMemo(() => Object.fromEntries(resolved.items.map((item) => [item.id, getItemStatus(item, day, state, selectedDate, now)])), [resolved.items, day, state, selectedDate, now]);
   const tahfizTrip = resolved.appliedOverrides.find((override) => override.type === 'tahfiz-trip');
@@ -38,9 +40,7 @@ export function TodayPage({ onOpenFitness }: TodayPageProps) {
         ? `${tahfizCancelledItem.statusReason} — لا يُحسب فشلًا`
         : undefined;
   const quduratCancelledItem = resolved.items.find((item) => item.kind === 'qudurat' && item.status === 'cancelled');
-  const quduratDisabledReason = quduratCancelledItem?.statusReason
-    ? `${quduratCancelledItem.statusReason} — لا يُحسب فشلًا`
-    : undefined;
+  const quduratDisabledReason = quduratCancelledItem?.statusReason ? `${quduratCancelledItem.statusReason} — لا يُحسب فشلًا` : undefined;
   const current = selectedDate === today ? getCurrentItem(resolved.items, now) : null;
   const next = selectedDate === today ? getNextItem(resolved.items, now) : null;
   const currentRemaining = current ? Math.max(0, minutesFromTime(current.endTime) - currentMinutes(now)) : null;
@@ -50,82 +50,38 @@ export function TodayPage({ onOpenFitness }: TodayPageProps) {
   const workoutMetric = workoutDone
     ? 'مكتملة'
     : workoutItem
-      ? statuses[workoutItem.id] === 'cancelled'
-        ? 'ملغاة'
-        : statuses[workoutItem.id] === 'skipped'
-          ? 'تخطيتها بقصد'
-          : statuses[workoutItem.id] === 'missed'
-            ? 'فاتت'
-            : 'بانتظارك'
-      : movementItem
-        ? day.movementCompleted
-          ? 'حركة مكتملة'
-          : 'حركة خفيفة'
-        : 'راحة';
+      ? statuses[workoutItem.id] === 'cancelled' ? 'ملغاة' : statuses[workoutItem.id] === 'skipped' ? 'تخطيتها بقصد' : statuses[workoutItem.id] === 'missed' ? 'فاتت' : 'بانتظارك'
+      : movementItem ? day.movementCompleted ? 'حركة مكتملة' : 'حركة خفيفة' : 'راحة';
   const hasException = resolved.appliedOverrides.length > 0;
   const tahfizPositive = day.sessions.tahfiz.status === 'completed' || ['attended', 'trip'].includes(day.tahfiz.status);
   const tahfizMetric = tahfizTrip ? 'رحلة' : tahfizDisabledReason ? 'ملغى' : tahfizLabel(day);
   const quduratAccuracy = day.qudurat.questions > 0 ? Math.round((day.qudurat.correct / day.qudurat.questions) * 100) : null;
-  const quduratMetric = day.qudurat.questions > 0
-    ? `${day.qudurat.questions} سؤال · ${quduratAccuracy}%`
-    : quduratDisabledReason ? 'ملغاة' : sessionLabel(day.sessions.qudurat.status);
-  const achievements = prayersDone
-    + Number(tahfizPositive)
-    + Number(day.sessions.qudurat.status === 'completed')
-    + Number(workoutDone || day.movementCompleted);
+  const quduratMetric = day.qudurat.questions > 0 ? `${day.qudurat.questions} سؤال · ${quduratAccuracy}%` : quduratDisabledReason ? 'ملغاة' : sessionLabel(day.sessions.qudurat.status);
+  const achievements = prayersDone + Number(tahfizPositive) + Number(day.sessions.qudurat.status === 'completed') + Number(workoutDone || day.movementCompleted);
 
   return (
     <div className="page page--today" data-page="today">
       <section className={`day-hero ${resolved.isHoliday ? 'day-hero--holiday' : ''}`}>
         <div className="date-switcher">
-          <button className="icon-button icon-button--on-dark" type="button" aria-label="اليوم السابق" onClick={() => setSelectedDate(addDays(selectedDate, -1))}>
-            <Icon name="chevron-right" />
-          </button>
-          <label className="date-switcher__label">
-            <span>{selectedDate === today ? 'اليوم' : formatArabicDate(selectedDate, 'short')}</span>
-            <input aria-label="اختر التاريخ" type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value as DateKey)} />
-          </label>
-          <button className="icon-button icon-button--on-dark" type="button" aria-label="اليوم التالي" onClick={() => setSelectedDate(addDays(selectedDate, 1))}>
-            <Icon name="chevron-left" />
-          </button>
+          <button className="icon-button icon-button--on-dark" type="button" aria-label="اليوم السابق" onClick={() => setSelectedDate(addDays(selectedDate, -1))}><Icon name="chevron-right" /></button>
+          <label className="date-switcher__label"><span>{selectedDate === today ? 'اليوم' : formatArabicDate(selectedDate, 'short')}</span><input aria-label="اختر التاريخ" type="date" value={selectedDate} onChange={(event) => setSelectedDate(event.target.value as DateKey)} /></label>
+          <button className="icon-button icon-button--on-dark" type="button" aria-label="اليوم التالي" onClick={() => setSelectedDate(addDays(selectedDate, 1))}><Icon name="chevron-left" /></button>
         </div>
-
         <div className="day-hero__status">
           <div>
             <span className="eyebrow eyebrow--gold">{resolved.isHoliday ? resolved.holidayTitle : hasException ? 'يوم باستثناء' : formatArabicDate(selectedDate)}</span>
             <h1>{selectedDate !== today ? 'ملخص هذا اليوم' : current ? current.title : next ? 'بين مرحلتين' : 'اكتمل جدول اليوم'}</h1>
-            <p>
-              {selectedDate !== today
-                ? 'يمكنك مراجعة الإنجاز أو تعديل هذا التاريخ دون تغيير الأسبوع.'
-                : current
-                  ? `${formatClock(current.startTime)} – ${formatClock(current.endTime)}${currentRemaining !== null ? ` · متبقّي ${currentRemaining} د` : ''}`
-                  : next
-                    ? `القادم: ${next.title} عند ${formatClock(next.startTime)}`
-                    : 'خذ نهاية اليوم بهدوء، بياناتك محفوظة.'}
-            </p>
+            <p>{selectedDate !== today ? 'يمكنك مراجعة الإنجاز أو تعديل هذا التاريخ دون تغيير الأسبوع.' : current ? `${formatClock(current.startTime)} – ${formatClock(current.endTime)}${currentRemaining !== null ? ` · متبقّي ${currentRemaining} د` : ''}` : next ? `القادم: ${next.title} عند ${formatClock(next.startTime)}` : 'خذ نهاية اليوم بهدوء، بياناتك محفوظة.'}</p>
           </div>
           <ProgressRing value={prayersDone} total={5} label="الصلوات" />
         </div>
-
-        <div className="hero-next-row">
-          <span><Icon name="clock" /> {next ? <>القادم <strong>{next.title}</strong></> : 'لا توجد مهام أخرى اليوم'}</span>
-          <button type="button" onClick={() => setOverrideOpen(true)}><Icon name="edit" /> تعديل هذا اليوم</button>
-        </div>
+        <div className="hero-next-row"><span><Icon name="clock" /> {next ? <>القادم <strong>{next.title}</strong></> : 'لا توجد مهام أخرى اليوم'}</span><button type="button" onClick={() => setOverrideOpen(true)}><Icon name="edit" /> تعديل هذا اليوم</button></div>
       </section>
 
-      {hasException && (
-        <div className="exception-banner" role="status">
-          <Icon name="calendar" />
-          <div><strong>هذا اليوم مختلف عن الجدول الأساسي</strong><span>{resolved.appliedOverrides.length} {resolved.appliedOverrides.length === 1 ? 'استثناء نشط' : 'استثناءات نشطة'} — الإلغاء المقصود لا يُحسب فشلًا.</span></div>
-          <button type="button" className="text-button" onClick={() => setOverrideOpen(true)}>عرض</button>
-        </div>
-      )}
+      {hasException && <div className="exception-banner" role="status"><Icon name="calendar" /><div><strong>هذا اليوم مختلف عن الجدول الأساسي</strong><span>{resolved.appliedOverrides.length} {resolved.appliedOverrides.length === 1 ? 'استثناء نشط' : 'استثناءات نشطة'} — الإلغاء المقصود لا يُحسب فشلًا.</span></div><button type="button" className="text-button" onClick={() => setOverrideOpen(true)}>عرض</button></div>}
 
       <section className="dashboard-section" aria-labelledby="dashboard-title">
-        <div className="section-heading">
-          <div><span className="eyebrow">نظرة سريعة</span><h2 id="dashboard-title">لوحة اليوم</h2></div>
-          <span className="section-heading__aside">{achievements} إنجازات</span>
-        </div>
+        <div className="section-heading"><div><span className="eyebrow">نظرة سريعة</span><h2 id="dashboard-title">لوحة اليوم</h2></div><span className="section-heading__aside">{achievements} إنجازات</span></div>
         <div className="metric-grid">
           <MetricCard icon="prayer" label="الصلاة" value={`${prayersDone}/5`} state={prayersDone === 5 ? 'done' : 'active'} />
           <MetricCard icon="book" label="التحفيظ" value={tahfizMetric} state={tahfizPositive ? 'done' : tahfizDisabledReason || ['excused', 'holiday', 'skipped-intentionally'].includes(day.tahfiz.status) ? 'neutral' : 'active'} />
@@ -134,15 +90,9 @@ export function TodayPage({ onOpenFitness }: TodayPageProps) {
         </div>
       </section>
 
-      <PrayerTracker key={`prayers-${selectedDate}`} date={selectedDate} />
+      <PrayerTracker key={`prayers-${selectedDate}`} date={selectedDate} schedule={prayerTimes.schedule} tomorrowSchedule={prayerTimes.tomorrowSchedule} method={prayerTimes.method} locationStatus={prayerTimes.locationStatus} isToday={selectedDate === today} onRefreshLocation={prayerTimes.refreshLocation} />
 
-      <section className="sessions-section" aria-labelledby="sessions-title">
-        <div className="section-heading"><div><span className="eyebrow">جلسات بوقت حقيقي</span><h2 id="sessions-title">التركيز</h2></div></div>
-        <div className="session-grid">
-          <SessionTimerCard date={selectedDate} kind="tahfiz" timer={day.sessions.tahfiz} note={day.sessionNotes.tahfiz} disabledReason={tahfizDisabledReason} />
-          <SessionTimerCard date={selectedDate} kind="qudurat" timer={day.sessions.qudurat} note={day.sessionNotes.qudurat} disabledReason={quduratDisabledReason} />
-        </div>
-      </section>
+      <section className="sessions-section" aria-labelledby="sessions-title"><div className="section-heading"><div><span className="eyebrow">جلسات بوقت حقيقي</span><h2 id="sessions-title">التركيز</h2></div></div><div className="session-grid"><SessionTimerCard date={selectedDate} kind="tahfiz" timer={day.sessions.tahfiz} note={day.sessionNotes.tahfiz} disabledReason={tahfizDisabledReason} /><SessionTimerCard date={selectedDate} kind="qudurat" timer={day.sessions.qudurat} note={day.sessionNotes.qudurat} disabledReason={quduratDisabledReason} /></div></section>
 
       <DailyJournalPanel key={`journal-${selectedDate}`} date={selectedDate} />
 
@@ -152,38 +102,16 @@ export function TodayPage({ onOpenFitness }: TodayPageProps) {
           {resolved.items.map((item) => {
             const status = statuses[item.id];
             const isCurrent = current?.id === item.id;
-            return (
-              <li key={`${item.id}-${item.overrideId ?? 'base'}`} className={`timeline-item ${status ? `is-${status}` : ''} ${isCurrent ? 'is-current' : ''}`}>
-                <div className="timeline-time"><strong>{formatClock(item.startTime)}</strong><span>{formatClock(item.endTime)}</span></div>
-                <div className="timeline-node"><span><Icon name={iconForItem(item)} /></span></div>
-                <div className="timeline-card">
-                  <div className="timeline-card__main">
-                    <div><h3>{item.title}</h3>{item.note && <p>{item.note}</p>}{item.statusReason && <p>{item.statusReason}</p>}</div>
-                    {isCurrent && <span className="now-badge">الآن</span>}
-                    {status && <StatusBadge status={status} />}
-                  </div>
-                  {item.kind !== 'prayer' && !['tahfiz', 'qudurat'].includes(item.kind) && item.status !== 'cancelled' && (
-                    <label className="status-select">
-                      <span className="sr-only">حالة {item.title}</span>
-                      <select value={day.taskStatuses[item.id] ?? ''} onChange={(event) => actions.setTaskStatus(selectedDate, item.id, (event.target.value || null) as TaskStatus | null)}>
-                        <option value="">غير مسجل</option>
-                        <option value="completed">مكتمل</option>
-                        <option value="skipped">تخطيته بقصد</option>
-                      </select>
-                    </label>
-                  )}
-                </div>
-              </li>
-            );
+            return <li key={`${item.id}-${item.overrideId ?? 'base'}`} className={`timeline-item ${status ? `is-${status}` : ''} ${isCurrent ? 'is-current' : ''}`}>
+              <div className="timeline-time"><strong>{formatClock(item.startTime)}</strong><span>{formatClock(item.endTime)}</span></div>
+              <div className="timeline-node"><span><Icon name={iconForItem(item)} /></span></div>
+              <div className="timeline-card"><div className="timeline-card__main"><div><h3>{item.title}</h3>{item.kind === 'prayer' && <p>الأذان → الإقامة</p>}{item.note && <p>{item.note}</p>}{item.statusReason && <p>{item.statusReason}</p>}</div>{isCurrent && <span className="now-badge">الآن</span>}{status && <StatusBadge status={status} />}</div>{item.kind !== 'prayer' && !['tahfiz', 'qudurat'].includes(item.kind) && item.status !== 'cancelled' && <label className="status-select"><span className="sr-only">حالة {item.title}</span><select value={day.taskStatuses[item.id] ?? ''} onChange={(event) => actions.setTaskStatus(selectedDate, item.id, (event.target.value || null) as TaskStatus | null)}><option value="">غير مسجل</option><option value="completed">مكتمل</option><option value="skipped">تخطيته بقصد</option></select></label>}</div>
+            </li>;
           })}
         </ol>
       </section>
 
-      <section className="daily-note-section" aria-labelledby="daily-note-title">
-        <div className="section-heading section-heading--small"><h2 id="daily-note-title">ملاحظة اليوم</h2></div>
-        <textarea value={day.notes} maxLength={2000} rows={3} onChange={(event) => actions.setDayNotes(selectedDate, event.target.value)} placeholder="شيء تريد تذكره عن هذا اليوم..." />
-      </section>
-
+      <section className="daily-note-section" aria-labelledby="daily-note-title"><div className="section-heading section-heading--small"><h2 id="daily-note-title">ملاحظة اليوم</h2></div><textarea value={day.notes} maxLength={2000} rows={3} onChange={(event) => actions.setDayNotes(selectedDate, event.target.value)} placeholder="شيء تريد تذكره عن هذا اليوم..." /></section>
       <DayOverrideSheet key={selectedDate} open={overrideOpen} date={selectedDate} items={resolved.items} onClose={() => setOverrideOpen(false)} />
     </div>
   );
@@ -191,9 +119,7 @@ export function TodayPage({ onOpenFitness }: TodayPageProps) {
 
 function MetricCard({ icon, label, value, state, onClick }: { icon: IconName; label: string; value: string; state: 'done' | 'active' | 'neutral'; onClick?: () => void }) {
   const content = <><span className={`metric-card__icon metric-card__icon--${state}`}><Icon name={icon} /></span><span>{label}</span><strong>{value}</strong></>;
-  return onClick
-    ? <button type="button" className="metric-card metric-card--button" onClick={onClick}>{content}<Icon name="chevron-left" className="metric-card__arrow" /></button>
-    : <div className="metric-card">{content}</div>;
+  return onClick ? <button type="button" className="metric-card metric-card--button" onClick={onClick}>{content}<Icon name="chevron-left" className="metric-card__arrow" /></button> : <div className="metric-card">{content}</div>;
 }
 
 function StatusBadge({ status }: { status: TaskStatus }) {
@@ -230,25 +156,13 @@ function getItemStatus(item: ResolvedScheduleItem, day: DayRecord, state: Routin
 }
 
 function iconForItem(item: ResolvedScheduleItem): IconName {
-  const icons: Partial<Record<ResolvedScheduleItem['kind'], IconName>> = {
-    prayer: 'prayer', school: 'school', rest: 'moon', tahfiz: 'book', qudurat: 'brain', workout: 'fitness', movement: 'walk', custom: 'calendar',
-  };
+  const icons: Partial<Record<ResolvedScheduleItem['kind'], IconName>> = { prayer: 'prayer', school: 'school', rest: 'moon', tahfiz: 'book', qudurat: 'brain', workout: 'fitness', movement: 'walk', custom: 'calendar' };
   return icons[item.kind] ?? 'clock';
 }
 
-function sessionLabel(status: DayRecord['sessions']['tahfiz']['status']): string {
-  return status === 'completed' ? 'مكتملة' : status === 'running' ? 'جارية' : status === 'paused' ? 'متوقفة' : 'بانتظارك';
-}
+function sessionLabel(status: DayRecord['sessions']['tahfiz']['status']): string { return status === 'completed' ? 'مكتملة' : status === 'running' ? 'جارية' : status === 'paused' ? 'متوقفة' : 'بانتظارك'; }
 
 function tahfizLabel(day: DayRecord): string {
-  const labels: Record<DayRecord['tahfiz']['status'], string> = {
-    unrecorded: sessionLabel(day.sessions.tahfiz.status),
-    attended: 'حضرت',
-    'skipped-intentionally': 'تخطيته بقصد',
-    excused: 'بعذر',
-    holiday: 'إجازة',
-    trip: 'رحلة',
-    missed: 'فاتني',
-  };
+  const labels: Record<DayRecord['tahfiz']['status'], string> = { unrecorded: sessionLabel(day.sessions.tahfiz.status), attended: 'حضرت', 'skipped-intentionally': 'تخطيته بقصد', excused: 'بعذر', holiday: 'إجازة', trip: 'رحلة', missed: 'فاتني' };
   return labels[day.tahfiz.status];
 }

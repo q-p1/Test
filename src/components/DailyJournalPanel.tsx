@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useNow } from '../hooks/useNow';
 import { calculateDayScore, calculateStreak, getWeekSnapshot } from '../lib/dailyMetrics';
 import { toDateKey } from '../lib/date';
@@ -31,8 +31,12 @@ export function DailyJournalPanel({ date }: { date: DateKey }) {
   const day = getDayRecord(state, date);
   const now = useNow(Boolean(day.activeActivity), 1000);
   const today = toDateKey(new Date(now));
-  const [wakeTime, setWakeTime] = useState(day.wakeTime || (date === today ? localClock(new Date(now)) : state.settings.wakeTarget));
-  const [bedTime, setBedTime] = useState(day.bedTime || state.settings.sleepTarget);
+  const initialWakeTime = day.wakeTime || (date === today ? localClock(new Date(now)) : state.settings.wakeTarget);
+  const initialBedTime = day.bedTime || state.settings.sleepTarget;
+  const [wakeTime, setWakeTime] = useState(initialWakeTime);
+  const [bedTime, setBedTime] = useState(initialBedTime);
+  const wakeTimeRef = useRef(initialWakeTime);
+  const bedTimeRef = useRef(initialBedTime);
   const [customLabel, setCustomLabel] = useState('');
   const [customKind, setCustomKind] = useState<DailyLogKind>('custom');
   const [customNote, setCustomNote] = useState('');
@@ -80,14 +84,14 @@ export function DailyJournalPanel({ date }: { date: DateKey }) {
       <div className="day-boundary-grid">
         <article className={day.dayStartedAt ? 'day-boundary-card is-done' : 'day-boundary-card'}>
           <div><span className="feature-icon"><Icon name="today" /></span><div><strong>بداية اليوم</strong><small>{day.dayStartedAt ? `بدأ عند ${formatTimestamp(day.dayStartedAt)}` : 'سجّل صحوتك مرة واحدة'}</small></div></div>
-          <label className="field field--compact"><span>وقت الصحوة</span><input type="time" value={wakeTime} disabled={Boolean(day.dayStartedAt)} onChange={(event) => setWakeTime(event.target.value)} /></label>
-          <button className="button button--primary button--full" type="button" disabled={Boolean(day.dayStartedAt)} onClick={() => actions.startDay(date, wakeTime)}><Icon name="play" /> {day.dayStartedAt ? 'اليوم بدأ ✓' : 'بدأ يومي'}</button>
+          <label className="field field--compact"><span>وقت الصحوة</span><input type="time" value={wakeTime} disabled={Boolean(day.dayStartedAt)} onChange={(event) => { wakeTimeRef.current = event.target.value; setWakeTime(event.target.value); }} /></label>
+          <button className="button button--primary button--full" type="button" disabled={Boolean(day.dayStartedAt)} onClick={() => actions.startDay(date, wakeTimeRef.current)}><Icon name="play" /> {day.dayStartedAt ? 'اليوم بدأ ✓' : 'بدأ يومي'}</button>
         </article>
 
         <article className={day.dayEndedAt ? 'day-boundary-card is-done' : 'day-boundary-card'}>
           <div><span className="feature-icon"><Icon name="moon" /></span><div><strong>إغلاق اليوم</strong><small>{day.dayEndedAt ? `أغلق عند ${formatTimestamp(day.dayEndedAt)}` : 'وقت النوم وملاحظة اليوم يبقون محفوظين'}</small></div></div>
-          <label className="field field--compact"><span>وقت النوم</span><input type="time" value={bedTime} disabled={Boolean(day.dayEndedAt)} onChange={(event) => setBedTime(event.target.value)} /></label>
-          <button className="button button--secondary button--full" type="button" disabled={Boolean(day.dayEndedAt)} onClick={() => actions.endDay(date, bedTime)}><Icon name="check" /> {day.dayEndedAt ? 'اليوم مقفل ✓' : 'انتهى يومي'}</button>
+          <label className="field field--compact"><span>وقت النوم</span><input type="time" value={bedTime} disabled={Boolean(day.dayEndedAt)} onChange={(event) => { bedTimeRef.current = event.target.value; setBedTime(event.target.value); }} /></label>
+          <button className="button button--secondary button--full" type="button" disabled={Boolean(day.dayEndedAt)} onClick={() => actions.endDay(date, bedTimeRef.current)}><Icon name="check" /> {day.dayEndedAt ? 'اليوم مقفل ✓' : 'انتهى يومي'}</button>
         </article>
       </div>
 
