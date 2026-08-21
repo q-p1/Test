@@ -12,6 +12,7 @@ export default function App() {
   const { state, actions, notice, storageError } = useRoutine();
   const [page, setPage] = useState<AppPage>('today');
   const [updateRegistration, setUpdateRegistration] = useState<ServiceWorkerRegistration | null>(null);
+  const appIcon = `${import.meta.env.BASE_URL}icons/icon.svg`;
 
   useEffect(() => {
     const onUpdate = (event: Event) => setUpdateRegistration((event as CustomEvent<ServiceWorkerRegistration>).detail);
@@ -28,7 +29,7 @@ export default function App() {
     <div className="app-shell">
       <a className="skip-link" href="#main-content">انتقل إلى المحتوى</a>
       <header className="app-bar">
-        <div className="app-bar__brand"><span className="brand-mark">ر</span><div><strong>روتيني</strong><small>{state.settings.userName ? `يوم ${state.settings.userName}` : 'يوم واضح، خطوة بخطوة'}</small></div></div>
+        <div className="app-bar__brand"><span className="brand-mark"><img src={appIcon} alt="" aria-hidden="true" style={{ inlineSize: '72%', blockSize: '72%', objectFit: 'contain' }} /></span><div><strong>روتيني</strong><small>{state.settings.userName ? `يوم ${state.settings.userName}` : 'يوم واضح، خطوة بخطوة'}</small></div></div>
         <span className="local-badge"><span /> محفوظ محليًا</span>
       </header>
       <main id="main-content" className="app-main">

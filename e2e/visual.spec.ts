@@ -15,9 +15,13 @@ test('capture core screens and states', async ({ page }) => {
   await navigate(page, 'المدرسة');
   await capture(page, 'school-today');
   const schoolTabs = page.getByRole('navigation', { name: 'أقسام المدرسة' });
-  await schoolTabs.getByRole('button', { name: 'المهام', exact: true }).click();
+  const tasksTab = schoolTabs.getByRole('button', { name: 'المهام', exact: true });
+  await tasksTab.click();
+  await expect(tasksTab).toHaveClass(/is-active/);
   await capture(page, 'school-tasks');
-  await schoolTabs.getByRole('button', { name: 'المواد', exact: true }).click();
+  const subjectsTab = schoolTabs.getByRole('button', { name: 'المواد', exact: true });
+  await subjectsTab.click();
+  await expect(subjectsTab).toHaveClass(/is-active/);
   await capture(page, 'school-subjects');
 
   await navigate(page, 'الرياضة');
@@ -28,6 +32,7 @@ test('capture core screens and states', async ({ page }) => {
   await capture(page, 'exercise-library');
   await page.locator('.exercise-card__button').first().click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  await settlePaint(page);
   await page.screenshot({ path: 'visual-qa/exercise-detail.png', fullPage: false });
   await page.getByRole('dialog').getByRole('button', { name: 'إغلاق النافذة' }).click();
 
@@ -36,6 +41,8 @@ test('capture core screens and states', async ({ page }) => {
 
   await navigate(page, 'اليوم');
   await page.getByRole('button', { name: 'تعديل هذا اليوم' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await settlePaint(page);
   await page.screenshot({ path: 'visual-qa/day-override-sheet.png', fullPage: false });
   await page.getByRole('dialog').getByRole('button', { name: 'إغلاق النافذة' }).click();
 
@@ -109,9 +116,16 @@ async function capture(page: Page, name: string) {
     window.scrollTo({ top: 0, behavior: 'auto' });
   });
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await settlePaint(page);
   await page.screenshot({ path: `visual-qa/${name}.png`, fullPage: true });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+}
+
+async function settlePaint(page: Page) {
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }));
 }
 
 async function warmLazyImages(page: Page) {
