@@ -80,18 +80,22 @@ async function capture(page: Page, name: string) {
 }
 
 async function warmLazyImages(page: Page) {
-  const expectedImages = await page.locator('.exercise-card img').count();
+  const images = page.locator('.exercise-card img');
+  const expectedImages = await images.count();
   expect(expectedImages).toBe(17);
-  await page.evaluate(async () => {
-    const step = Math.max(240, Math.floor(window.innerHeight * 0.75));
-    for (let top = 0; top < document.documentElement.scrollHeight; top += step) {
-      window.scrollTo({ top, behavior: 'auto' });
-      await new Promise((resolve) => window.setTimeout(resolve, 60));
-    }
-  });
-  await expect.poll(() => page.locator('.exercise-card img').evaluateAll(
-    (images) => images.filter((image) => image.complete && image.naturalWidth > 0).length,
-  )).toBe(expectedImages);
+
+  // WebKit can defer a lazy image until it is individually brought into the
+  // viewport. Warm each card deliberately instead of racing a fast document
+  // scroll, then verify the decoded image has a real width. A genuinely
+  // missing/broken asset still fails this assertion rather than being hidden.
+  for (let index = 0; index < expectedImages; index += 1) {
+    const image = images.nth(index);
+    await image.scrollIntoViewIfNeeded();
+    await expect.poll(
+      () => image.evaluate((node) => node.complete ? node.naturalWidth : 0),
+      { timeout: 15_000, message: `Exercise image ${index + 1}/${expectedImages} did not load` },
+    ).toBeGreaterThan(0);
+  }
 }
 
 async function navigate(page: Page, label: 'اليوم' | 'الرياضة' | 'التمارين' | 'الإعدادات') {

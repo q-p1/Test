@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
-import { PRAYERS } from '../data/baseSchedule';
 import { useNow } from '../hooks/useNow';
 import { addDays, currentMinutes, formatArabicDate, formatClock, minutesFromTime, toDateKey } from '../lib/date';
 import { resolveDay } from '../lib/schedule';
 import { getDayRecord } from '../lib/storage';
 import { useRoutine } from '../state/RoutineContext';
 import type { DateKey, DayRecord, ResolvedScheduleItem, RoutineState, TaskStatus } from '../types';
+import { DailyJournalPanel } from '../components/DailyJournalPanel';
 import { DayOverrideSheet } from '../components/DayOverrideSheet';
 import { Icon, type IconName } from '../components/Icon';
+import { PrayerTracker } from '../components/PrayerTracker';
 import { ProgressRing } from '../components/ProgressRing';
 import { SessionTimerCard } from '../components/SessionTimerCard';
 
@@ -62,6 +63,16 @@ export function TodayPage({ onOpenFitness }: TodayPageProps) {
           : 'حركة خفيفة'
         : 'راحة';
   const hasException = resolved.appliedOverrides.length > 0;
+  const tahfizPositive = day.sessions.tahfiz.status === 'completed' || ['attended', 'trip'].includes(day.tahfiz.status);
+  const tahfizMetric = tahfizTrip ? 'رحلة' : tahfizDisabledReason ? 'ملغى' : tahfizLabel(day);
+  const quduratAccuracy = day.qudurat.questions > 0 ? Math.round((day.qudurat.correct / day.qudurat.questions) * 100) : null;
+  const quduratMetric = day.qudurat.questions > 0
+    ? `${day.qudurat.questions} سؤال · ${quduratAccuracy}%`
+    : quduratDisabledReason ? 'ملغاة' : sessionLabel(day.sessions.qudurat.status);
+  const achievements = prayersDone
+    + Number(tahfizPositive)
+    + Number(day.sessions.qudurat.status === 'completed')
+    + Number(workoutDone || day.movementCompleted);
 
   return (
     <div className="page page--today" data-page="today">
@@ -113,37 +124,17 @@ export function TodayPage({ onOpenFitness }: TodayPageProps) {
       <section className="dashboard-section" aria-labelledby="dashboard-title">
         <div className="section-heading">
           <div><span className="eyebrow">نظرة سريعة</span><h2 id="dashboard-title">لوحة اليوم</h2></div>
-          <span className="section-heading__aside">{prayersDone + Number(day.sessions.tahfiz.status === 'completed') + Number(day.sessions.qudurat.status === 'completed') + Number(workoutDone)} إنجازات</span>
+          <span className="section-heading__aside">{achievements} إنجازات</span>
         </div>
         <div className="metric-grid">
           <MetricCard icon="prayer" label="الصلاة" value={`${prayersDone}/5`} state={prayersDone === 5 ? 'done' : 'active'} />
-          <MetricCard icon="book" label="التحفيظ" value={tahfizTrip ? 'رحلة' : tahfizDisabledReason ? 'ملغى' : sessionLabel(day.sessions.tahfiz.status)} state={tahfizDisabledReason ? 'neutral' : day.sessions.tahfiz.status === 'completed' ? 'done' : 'active'} />
-          <MetricCard icon="brain" label="القدرات" value={sessionLabel(day.sessions.qudurat.status)} state={day.sessions.qudurat.status === 'completed' ? 'done' : 'active'} />
+          <MetricCard icon="book" label="التحفيظ" value={tahfizMetric} state={tahfizPositive ? 'done' : tahfizDisabledReason || ['excused', 'holiday', 'skipped-intentionally'].includes(day.tahfiz.status) ? 'neutral' : 'active'} />
+          <MetricCard icon="brain" label="القدرات" value={quduratMetric} state={day.sessions.qudurat.status === 'completed' ? 'done' : quduratDisabledReason ? 'neutral' : 'active'} />
           <MetricCard icon="fitness" label="الرياضة" value={workoutMetric} state={workoutDone || day.movementCompleted ? 'done' : 'neutral'} onClick={onOpenFitness} />
         </div>
       </section>
 
-      <section className="prayer-section" aria-labelledby="prayer-title">
-        <div className="section-heading">
-          <div><span className="eyebrow">ثابت يومك</span><h2 id="prayer-title">الصلوات</h2></div>
-          <span className="section-heading__aside">{prayersDone} من 5</span>
-        </div>
-        <div className="prayer-strip">
-          {PRAYERS.map((prayer) => (
-            <button
-              type="button"
-              key={prayer.id}
-              className={day.prayers[prayer.id] ? 'prayer-pill is-complete' : 'prayer-pill'}
-              aria-pressed={day.prayers[prayer.id]}
-              onClick={() => actions.togglePrayer(selectedDate, prayer.id)}
-            >
-              <span className="prayer-pill__check"><Icon name="check" /></span>
-              <strong>{prayer.name}</strong>
-              <small>{formatClock(prayer.time)}</small>
-            </button>
-          ))}
-        </div>
-      </section>
+      <PrayerTracker key={`prayers-${selectedDate}`} date={selectedDate} />
 
       <section className="sessions-section" aria-labelledby="sessions-title">
         <div className="section-heading"><div><span className="eyebrow">جلسات بوقت حقيقي</span><h2 id="sessions-title">التركيز</h2></div></div>
@@ -152,6 +143,8 @@ export function TodayPage({ onOpenFitness }: TodayPageProps) {
           <SessionTimerCard date={selectedDate} kind="qudurat" timer={day.sessions.qudurat} note={day.sessionNotes.qudurat} disabledReason={quduratDisabledReason} />
         </div>
       </section>
+
+      <DailyJournalPanel key={`journal-${selectedDate}`} date={selectedDate} />
 
       <section className="timeline-section" aria-labelledby="timeline-title">
         <div className="section-heading"><div><span className="eyebrow">من الاستيقاظ للنوم</span><h2 id="timeline-title">مسار اليوم</h2></div></div>
@@ -221,7 +214,12 @@ function getNextItem(items: ResolvedScheduleItem[], now: Date): ResolvedSchedule
 function getItemStatus(item: ResolvedScheduleItem, day: DayRecord, state: RoutineState, date: DateKey, now: Date): TaskStatus | undefined {
   if (item.status === 'cancelled') return 'cancelled';
   if (item.prayerId && day.prayers[item.prayerId]) return 'completed';
-  if (item.kind === 'tahfiz' && day.sessions.tahfiz.status === 'completed') return 'completed';
+  if (item.kind === 'tahfiz') {
+    if (day.sessions.tahfiz.status === 'completed' || ['attended', 'trip'].includes(day.tahfiz.status)) return 'completed';
+    if (day.tahfiz.status === 'skipped-intentionally') return 'skipped';
+    if (day.tahfiz.status === 'missed') return 'missed';
+    if (['excused', 'holiday'].includes(day.tahfiz.status)) return 'cancelled';
+  }
   if (item.kind === 'qudurat' && day.sessions.qudurat.status === 'completed') return 'completed';
   if (item.kind === 'workout' && state.workout.history.some((entry) => entry.date === date && (!item.workoutId || entry.workoutId === item.workoutId))) return 'completed';
   if (item.kind === 'movement' && day.movementCompleted) return 'completed';
@@ -240,4 +238,17 @@ function iconForItem(item: ResolvedScheduleItem): IconName {
 
 function sessionLabel(status: DayRecord['sessions']['tahfiz']['status']): string {
   return status === 'completed' ? 'مكتملة' : status === 'running' ? 'جارية' : status === 'paused' ? 'متوقفة' : 'بانتظارك';
+}
+
+function tahfizLabel(day: DayRecord): string {
+  const labels: Record<DayRecord['tahfiz']['status'], string> = {
+    unrecorded: sessionLabel(day.sessions.tahfiz.status),
+    attended: 'حضرت',
+    'skipped-intentionally': 'تخطيته بقصد',
+    excused: 'بعذر',
+    holiday: 'إجازة',
+    trip: 'رحلة',
+    missed: 'فاتني',
+  };
+  return labels[day.tahfiz.status];
 }
