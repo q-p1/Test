@@ -1,6 +1,6 @@
 import axe from 'axe-core';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { addDays, toDateKey } from './lib/date';
 import { createDefaultState, createEmptyDayRecord, saveState, STORAGE_KEY } from './lib/storage';
@@ -14,10 +14,19 @@ function navigate(label: 'اليوم' | 'الرياضة' | 'التمارين' | 
   fireEvent.click(within(screen.getByRole('navigation', { name: 'التنقل الرئيسي' })).getByRole('button', { name: label }));
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  localStorage.clear();
+  vi.useRealTimers();
+});
 
 describe('full interaction regression', () => {
   it('creates and restores a school holiday, then replaces tahfiz with a trip', async () => {
+    // Keep this scenario on a known school/Tahfiz day. Otherwise the same
+    // regression test changes meaning when CI happens to run on a Friday.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date('2026-08-20T12:00:00+03:00'));
+
     renderApp();
     fireEvent.click(screen.getByRole('button', { name: 'تعديل هذا اليوم' }));
     let dialog = screen.getByRole('dialog', { name: 'تعديل هذا اليوم' });
