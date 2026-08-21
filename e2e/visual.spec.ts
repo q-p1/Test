@@ -11,6 +11,19 @@ test('capture core screens and states', async ({ page }) => {
   await page.goto('/');
   await capture(page, 'today');
 
+  await seedSchoolPreview(page);
+  await navigate(page, 'المدرسة');
+  await capture(page, 'school-today');
+  const schoolTabs = page.getByRole('navigation', { name: 'أقسام المدرسة' });
+  const tasksTab = schoolTabs.getByRole('button', { name: 'المهام', exact: true });
+  await tasksTab.click();
+  await expect(tasksTab).toHaveClass(/is-active/);
+  await capture(page, 'school-tasks');
+  const subjectsTab = schoolTabs.getByRole('button', { name: 'المواد', exact: true });
+  await subjectsTab.click();
+  await expect(subjectsTab).toHaveClass(/is-active/);
+  await capture(page, 'school-subjects');
+
   await navigate(page, 'الرياضة');
   await capture(page, 'fitness');
 
@@ -19,6 +32,7 @@ test('capture core screens and states', async ({ page }) => {
   await capture(page, 'exercise-library');
   await page.locator('.exercise-card__button').first().click();
   await expect(page.getByRole('dialog')).toBeVisible();
+  await settlePaint(page);
   await page.screenshot({ path: 'visual-qa/exercise-detail.png', fullPage: false });
   await page.getByRole('dialog').getByRole('button', { name: 'إغلاق النافذة' }).click();
 
@@ -27,6 +41,8 @@ test('capture core screens and states', async ({ page }) => {
 
   await navigate(page, 'اليوم');
   await page.getByRole('button', { name: 'تعديل هذا اليوم' }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await settlePaint(page);
   await page.screenshot({ path: 'visual-qa/day-override-sheet.png', fullPage: false });
   await page.getByRole('dialog').getByRole('button', { name: 'إغلاق النافذة' }).click();
 
@@ -67,6 +83,32 @@ test('capture completed, holiday and tahfiz trip days', async ({ page }) => {
   await capture(page, 'tahfiz-trip-day');
 });
 
+async function seedSchoolPreview(page: Page) {
+  await page.evaluate(() => {
+    const now = new Date();
+    const pad = (value: number) => String(value).padStart(2, '0');
+    const date = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    localStorage.setItem('routine.school.v1', JSON.stringify({
+      schemaVersion: 1,
+      subjects: [
+        { id: 'math', name: 'رياضيات', teacher: 'أستاذ الرياضيات', room: 'فصل 12', note: 'مراجعة القوانين قبل كل اختبار', createdAt: 1 },
+        { id: 'physics', name: 'فيزياء', teacher: 'أستاذ الفيزياء', room: 'المعمل', note: '', createdAt: 2 },
+      ],
+      periods: [
+        { id: 'p1', weekday: now.getDay(), periodNumber: 1, subjectId: 'math', startTime: '07:00', endTime: '07:45', note: '' },
+        { id: 'p2', weekday: now.getDay(), periodNumber: 2, subjectId: 'physics', startTime: '07:50', endTime: '08:35', note: 'معمل' },
+      ],
+      assignments: [
+        { id: 'a1', subjectId: 'math', title: 'حل صفحة 42', dueDate: date, kind: 'homework', status: 'todo', important: true, note: 'الأسئلة الفردية', createdAt: 1 },
+      ],
+      exams: [
+        { id: 'e1', subjectId: 'physics', title: 'اختبار الحركة', date, time: '10:00', kind: 'quiz', scope: 'الفصل الأول', score: 18, maxScore: 20, note: '', createdAt: 1 },
+      ],
+      days: { [date]: { date, attendance: 'present', arrivalTime: '06:55', departureTime: '12:30', note: 'يوم مرتب' } },
+    }));
+  });
+}
+
 async function capture(page: Page, name: string) {
   await expect(page.locator('.app-shell')).toBeVisible();
   await page.evaluate(() => {
@@ -74,20 +116,22 @@ async function capture(page: Page, name: string) {
     window.scrollTo({ top: 0, behavior: 'auto' });
   });
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(0);
+  await settlePaint(page);
   await page.screenshot({ path: `visual-qa/${name}.png`, fullPage: true });
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(1);
+}
+
+async function settlePaint(page: Page) {
+  await page.evaluate(() => new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  }));
 }
 
 async function warmLazyImages(page: Page) {
   const images = page.locator('.exercise-card img');
   const expectedImages = await images.count();
   expect(expectedImages).toBe(17);
-
-  // WebKit can defer a lazy image until it is individually brought into the
-  // viewport. Warm each card deliberately instead of racing a fast document
-  // scroll, then verify the decoded image has a real width. A genuinely
-  // missing/broken asset still fails this assertion rather than being hidden.
   for (let index = 0; index < expectedImages; index += 1) {
     const image = images.nth(index);
     await image.scrollIntoViewIfNeeded();
@@ -98,7 +142,7 @@ async function warmLazyImages(page: Page) {
   }
 }
 
-async function navigate(page: Page, label: 'اليوم' | 'الرياضة' | 'التمارين' | 'الإعدادات') {
+async function navigate(page: Page, label: 'اليوم' | 'المدرسة' | 'الرياضة' | 'التمارين' | 'الإعدادات') {
   const destination = page
     .getByRole('navigation', { name: 'التنقل الرئيسي' })
     .getByRole('button', { name: label, exact: true });

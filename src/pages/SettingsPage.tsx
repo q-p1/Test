@@ -2,8 +2,9 @@ import { useMemo, useState } from 'react';
 import { minutesFromTime, toDateKey } from '../lib/date';
 import { getDayRecord } from '../lib/storage';
 import { getOverridesForDate } from '../lib/schedule';
+import { loadSchoolData, saveSchoolData, type SchoolData } from '../lib/schoolData';
 import { useRoutine } from '../state/RoutineContext';
-import type { BaseScheduleItem, RoutineState } from '../types';
+import type { BaseScheduleItem, DateKey, RoutineState } from '../types';
 import { BottomSheet } from '../components/BottomSheet';
 import { Icon } from '../components/Icon';
 
@@ -21,6 +22,7 @@ export function SettingsPage() {
   const { state, actions } = useRoutine();
   const today = toDateKey(new Date());
   const day = getDayRecord(state, today);
+  const school = loadSchoolData();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteOverrides, setDeleteOverrides] = useState(false);
   const [routineTitle, setRoutineTitle] = useState('');
@@ -28,12 +30,16 @@ export function SettingsPage() {
   const [routineEnd, setRoutineEnd] = useState('18:00');
   const [routineDays, setRoutineDays] = useState<number[]>([0, 1, 2, 3, 4]);
   const [routineMessage, setRoutineMessage] = useState('');
+  const [dataMessage, setDataMessage] = useState('');
   const overrideCount = getOverridesForDate(state.dateOverrides, today).length;
+  const hasSchoolDay = Boolean(school.days[today]);
   const completionCount = Object.values(day.prayers).filter(Boolean).length
     + Number(day.sessions.tahfiz.status !== 'idle' || day.tahfiz.status !== 'unrecorded')
     + Number(day.sessions.qudurat.status !== 'idle' || day.qudurat.questions > 0)
     + day.logs.length
-    + Object.keys(day.taskStatuses).length;
+    + Object.keys(day.taskStatuses).length
+    + Number(hasSchoolDay);
+  const appIcon = `${import.meta.env.BASE_URL}icons/icon.svg`;
 
   const recurring = useMemo(() => {
     const map = new Map<string, BaseScheduleItem>();
@@ -57,6 +63,18 @@ export function SettingsPage() {
     actions.addRecurringRoutine(title, routineStart, routineEnd, routineDays);
     setRoutineTitle('');
     setRoutineMessage('انضافت الفقرة للجدول الأسبوعي.');
+  };
+
+  const deleteToday = () => {
+    try {
+      deleteSchoolDay(school, today);
+      actions.deleteDate(today, deleteOverrides);
+      setDataMessage('حُذفت بيانات هذا اليوم من روتيني والمدرسة فقط.');
+      setDeleteOpen(false);
+      setDeleteOverrides(false);
+    } catch {
+      setDataMessage('تعذّر حذف تسجيل المدرسة من هذا الجهاز. لم نحذف بقية بيانات اليوم حتى تبقى العملية آمنة.');
+    }
   };
 
   return (
@@ -116,23 +134,24 @@ export function SettingsPage() {
       </section>
 
       <section className="settings-section" aria-labelledby="data-title">
-        <div className="settings-heading"><span><Icon name="history" /></span><div><h2 id="data-title">البيانات والنسخة الاحتياطية</h2><p>{state.workout.history.length} حصص محفوظة · {Object.keys(state.days).length} أيام مسجلة</p></div></div>
+        <div className="settings-heading"><span><Icon name="history" /></span><div><h2 id="data-title">البيانات والنسخة الاحتياطية</h2><p>{state.workout.history.length} حصص محفوظة · {Object.keys(state.days).length} أيام روتين · {school.subjects.length} مواد</p></div></div>
         <div className="today-data-summary"><div><span>بيانات اليوم</span><strong>{completionCount} سجلات</strong></div><div><span>استثناءات اليوم</span><strong>{overrideCount}</strong></div></div>
-        <button className="button button--secondary button--full backup-button" type="button" onClick={() => exportBackup(state)}><Icon name="restore" /> تصدير نسخة احتياطية JSON</button>
-        <p className="settings-microcopy">النسخة تشمل الجدول والاستثناءات والأيام والمؤقتات والحصص. لا تُرسل لأي خادم.</p>
-        <button className="danger-row" type="button" onClick={() => setDeleteOpen(true)}><span><Icon name="trash" /></span><div><strong>حذف بيانات هذا اليوم</strong><small>لا يحذف الإعدادات أو الأيام السابقة أو البرنامج</small></div><Icon name="chevron-left" /></button>
+        <button className="button button--secondary button--full backup-button" type="button" onClick={() => exportBackup(state, loadSchoolData())}><Icon name="restore" /> تصدير نسخة احتياطية JSON</button>
+        <p className="settings-microcopy">النسخة تشمل الجدول والاستثناءات والأيام والمؤقتات والحصص، بالإضافة إلى المواد والجدول الدراسي والواجبات والاختبارات وتسجيلات المدرسة. لا تُرسل لأي خادم.</p>
+        {dataMessage && <p className="settings-microcopy" role="status">{dataMessage}</p>}
+        <button className="danger-row" type="button" onClick={() => { setDataMessage(''); setDeleteOpen(true); }}><span><Icon name="trash" /></span><div><strong>حذف بيانات هذا اليوم</strong><small>يحذف تسجيل اليوم فقط من روتيني والمدرسة، ويحافظ على المواد والجدول والواجبات والاختبارات</small></div><Icon name="chevron-left" /></button>
       </section>
 
       <section className="settings-section settings-section--about" aria-labelledby="about-title">
-        <div className="settings-heading"><span className="brand-mark brand-mark--small">ر</span><div><h2 id="about-title">روتيني</h2><p>الإصدار 1.1.0 · عربي · مصمم لـiPhone أولًا</p></div></div>
-        <p>يوم واضح، عبادة محفوظة بالتفاصيل، تحفيظ ودارسة مسجلان بصدق، وروتين قابل للتعديل بدون فقدان التاريخ.</p>
+        <div className="settings-heading"><span className="brand-mark brand-mark--small"><img src={appIcon} alt="" aria-hidden="true" style={{ inlineSize: '72%', blockSize: '72%', objectFit: 'contain' }} /></span><div><h2 id="about-title">روتيني</h2><p>الإصدار 1.2.0 · عربي · مصمم لـiPhone أولًا</p></div></div>
+        <p>يوم واضح، عبادة محفوظة بالتفاصيل، تحفيظ ودراسة مسجلان بصدق، ومدرسة وروتين قابلان للتعديل بدون فقدان التاريخ.</p>
       </section>
 
-      <BottomSheet open={deleteOpen} title="حذف بيانات اليوم؟" description={`سيُحذف ما سجلته في ${today} فقط، بما فيه المؤقتات والملاحظات والسجلات والحصة المنفذة اليوم.`} onClose={() => setDeleteOpen(false)} size="medium">
+      <BottomSheet open={deleteOpen} title="حذف بيانات اليوم؟" description={`سيُحذف ما سجلته في ${today} فقط، بما فيه المؤقتات والملاحظات والسجلات والحصة المنفذة وتسجيل المدرسة لهذا اليوم.`} onClose={() => setDeleteOpen(false)} size="medium">
         <div className="delete-confirmation">
-          <div className="warning-box"><Icon name="info" /><p><strong>لن يُحذف:</strong> إعداداتك، أي يوم سابق، خطة A/B/C/D، أو تاريخ الحصص في الأيام الأخرى.</p></div>
+          <div className="warning-box"><Icon name="info" /><p><strong>لن يُحذف:</strong> إعداداتك، أي يوم سابق، خطة A/B/C/D، تاريخ الحصص في الأيام الأخرى، المواد، جدول المدرسة، الواجبات أو الاختبارات.</p></div>
           {overrideCount > 0 && <label className="check-field"><input type="checkbox" checked={deleteOverrides} onChange={(event) => setDeleteOverrides(event.target.checked)} /><span><strong>احذف استثناءات هذا التاريخ أيضًا</strong><small>الاستثناءات الممتدة ستبقى في الأيام الأخرى.</small></span></label>}
-          <div className="confirmation-actions"><button className="button button--danger button--full" type="button" onClick={() => { actions.deleteDate(today, deleteOverrides); setDeleteOpen(false); setDeleteOverrides(false); }}>حذف هذا اليوم فقط</button><button className="button button--secondary button--full" type="button" onClick={() => setDeleteOpen(false)}>إلغاء</button></div>
+          <div className="confirmation-actions"><button className="button button--danger button--full" type="button" onClick={deleteToday}>حذف هذا اليوم فقط</button><button className="button button--secondary button--full" type="button" onClick={() => setDeleteOpen(false)}>إلغاء</button></div>
         </div>
       </BottomSheet>
     </div>
@@ -159,8 +178,22 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, Math.round(value)));
 }
 
-function exportBackup(state: RoutineState): void {
-  const payload = { exportedAt: new Date().toISOString(), app: 'روتيني', schemaVersion: state.schemaVersion, state };
+function deleteSchoolDay(school: SchoolData, date: DateKey): void {
+  if (!school.days[date]) return;
+  const days = { ...school.days };
+  delete days[date];
+  saveSchoolData({ ...school, days });
+}
+
+function exportBackup(state: RoutineState, school: SchoolData): void {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    app: 'روتيني',
+    backupSchemaVersion: 2,
+    schemaVersion: state.schemaVersion,
+    state,
+    school,
+  };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

@@ -7,6 +7,7 @@ import { RoutineProvider } from './state/RoutineContext';
 import './styles.css';
 import './rich-tracking.css';
 import './prayer-times.css';
+import './school.css';
 
 document.documentElement.lang = 'ar';
 document.documentElement.dir = 'rtl';
