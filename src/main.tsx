@@ -6,6 +6,7 @@ import { registerServiceWorker } from './lib/registerServiceWorker';
 import { RoutineProvider } from './state/RoutineContext';
 import './styles.css';
 import './rich-tracking.css';
+import './prayer-times.css';
 
 document.documentElement.lang = 'ar';
 document.documentElement.dir = 'rtl';
