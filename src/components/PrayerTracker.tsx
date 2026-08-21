@@ -25,7 +25,7 @@ interface PrayerTrackerProps {
   schedule: PrayerSchedule | null;
   tomorrowSchedule: PrayerSchedule | null;
   method: PrayerCalculationMethod | null;
-  locationStatus: 'locating' | 'ready' | 'cached' | 'denied' | 'unavailable';
+  locationStatus: 'locating' | 'ready' | 'approximate' | 'cached' | 'denied' | 'unavailable';
   isToday: boolean;
   onRefreshLocation(): void;
 }
@@ -44,15 +44,15 @@ export function PrayerTracker({ date, schedule, tomorrowSchedule, method, locati
         <div>
           <span className="eyebrow">ثابت يومك</span>
           <h2 id="prayer-title">الصلوات</h2>
-          <p className="section-subcopy">الأذان حسب موقع جهازك، والإقامة حسب المدة المحددة لكل صلاة.</p>
+          <p className="section-subcopy">الأذان حسب إحداثيات موقع جهازك، والإقامة حسب المدة المحددة لكل صلاة.</p>
         </div>
         <span className="section-heading__aside">{done} من 5</span>
       </div>
 
-      <div className={`prayer-location-bar prayer-location-bar--${locationStatus}`}>
+      <div className={`prayer-location-bar prayer-location-bar--${locationStatus}`} data-calculation-method={method ?? 'unknown'}>
         <div>
           <Icon name="prayer" />
-          <span>{locationMessage(locationStatus, method)}</span>
+          <span>{locationMessage(locationStatus)}</span>
         </div>
         <button type="button" className="text-button" onClick={onRefreshLocation}>تحديث الموقع</button>
       </div>
@@ -138,12 +138,13 @@ export function PrayerTracker({ date, schedule, tomorrowSchedule, method, locati
   );
 }
 
-function locationMessage(status: PrayerTrackerProps['locationStatus'], method: PrayerCalculationMethod | null): string {
-  if (status === 'locating') return 'نحدد موقعك تلقائيًا لحساب أوقات الصلاة…';
-  if (status === 'denied') return 'فعّل إذن الموقع ليتم حساب الأذان حسب مكانك.';
+function locationMessage(status: PrayerTrackerProps['locationStatus']): string {
+  if (status === 'locating') return 'نحدد موقعك الدقيق تلقائيًا لحساب أوقات الصلاة…';
+  if (status === 'denied') return 'فعّل إذن الموقع والموقع الدقيق ليتم حساب الأذان حسب مكانك.';
   if (status === 'unavailable') return 'تعذّر الوصول للموقع؛ تظهر أوقات احتياطية مؤقتًا.';
-  const methodLabel = method === 'umm-al-qura' ? 'أم القرى' : 'رابطة العالم الإسلامي';
-  return status === 'cached' ? `آخر موقع محفوظ · ${methodLabel}` : `حسب موقعك الحالي · ${methodLabel}`;
+  if (status === 'approximate') return 'الموقع وصل بشكل تقريبي · فعّل «الموقع الدقيق» من إعدادات الآيفون.';
+  if (status === 'cached') return 'آخر موقع محفوظ · جاري تحديثه بموقعك الدقيق.';
+  return 'حسب موقعك الدقيق الحالي';
 }
 
 function addClockMinutes(time: string, amount: number): string {

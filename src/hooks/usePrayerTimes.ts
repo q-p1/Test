@@ -3,12 +3,14 @@ import { calculatePrayerSchedule, calculateTomorrowSchedule, type PrayerCalculat
 import type { DateKey } from '../types';
 
 const LOCATION_KEY = 'routine.prayer.location.v1';
+const PRECISE_LOCATION_THRESHOLD_METERS = 250;
 
-type LocationStatus = 'locating' | 'ready' | 'cached' | 'denied' | 'unavailable';
+type LocationStatus = 'locating' | 'ready' | 'approximate' | 'cached' | 'denied' | 'unavailable';
 
 interface CachedLocation {
   latitude: number;
   longitude: number;
+  accuracy: number;
   updatedAt: number;
 }
 
@@ -33,16 +35,16 @@ export function usePrayerTimes(date: DateKey): PrayerTimesState {
 
   const refreshLocation = useCallback(() => {
     if (!('geolocation' in navigator)) {
-      setLocationStatus((current) => current === 'cached' || current === 'ready' ? 'cached' : 'unavailable');
+      setLocationStatus((current) => current === 'cached' || current === 'ready' || current === 'approximate' ? 'cached' : 'unavailable');
       return;
     }
-    setLocationStatus((current) => current === 'ready' || current === 'cached' ? 'cached' : 'locating');
+    setLocationStatus('locating');
     requestLocation(true).then((next) => {
       setLocation(next);
-      setLocationStatus('ready');
+      setLocationStatus(isPreciseLocation(next) ? 'ready' : 'approximate');
     }).catch((error: GeolocationPositionError | Error) => {
       const denied = 'code' in error && error.code === 1;
-      setLocationStatus((current) => current === 'cached' || current === 'ready' ? 'cached' : denied ? 'denied' : 'unavailable');
+      setLocationStatus((current) => current === 'cached' || current === 'ready' || current === 'approximate' ? 'cached' : denied ? 'denied' : 'unavailable');
     });
   }, []);
 
@@ -50,10 +52,10 @@ export function usePrayerTimes(date: DateKey): PrayerTimesState {
     if (!('geolocation' in navigator)) return;
     requestLocation(false).then((next) => {
       setLocation(next);
-      setLocationStatus('ready');
+      setLocationStatus(isPreciseLocation(next) ? 'ready' : 'approximate');
     }).catch((error: GeolocationPositionError | Error) => {
       const denied = 'code' in error && error.code === 1;
-      setLocationStatus((current) => current === 'cached' || current === 'ready' ? 'cached' : denied ? 'denied' : 'unavailable');
+      setLocationStatus((current) => current === 'cached' || current === 'ready' || current === 'approximate' ? 'cached' : denied ? 'denied' : 'unavailable');
     });
   }, []);
 
@@ -75,13 +77,18 @@ function requestLocation(force: boolean): Promise<CachedLocation> {
   const promise = new Promise<CachedLocation>((resolve, reject) => {
     navigator.geolocation.getCurrentPosition((position) => {
       const location: CachedLocation = {
-        latitude: roundCoordinate(position.coords.latitude),
-        longitude: roundCoordinate(position.coords.longitude),
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        accuracy: Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : Number.POSITIVE_INFINITY,
         updatedAt: Date.now(),
       };
       try { localStorage.setItem(LOCATION_KEY, JSON.stringify(location)); } catch { /* Local fallback is optional. */ }
       resolve(location);
-    }, reject, { enableHighAccuracy: false, timeout: 12_000, maximumAge: 10 * 60_000 });
+    }, reject, {
+      enableHighAccuracy: true,
+      timeout: 15_000,
+      maximumAge: force ? 0 : 60_000,
+    });
   });
   if (!force) sharedLocationRequest = promise;
   return promise;
@@ -94,6 +101,7 @@ function readCachedLocation(): CachedLocation | null {
     return {
       latitude: Number(parsed.latitude),
       longitude: Number(parsed.longitude),
+      accuracy: Number.isFinite(parsed.accuracy) ? Number(parsed.accuracy) : Number.POSITIVE_INFINITY,
       updatedAt: Number.isFinite(parsed.updatedAt) ? Number(parsed.updatedAt) : 0,
     };
   } catch {
@@ -101,6 +109,6 @@ function readCachedLocation(): CachedLocation | null {
   }
 }
 
-function roundCoordinate(value: number): number {
-  return Math.round(value * 10_000) / 10_000;
+function isPreciseLocation(location: CachedLocation): boolean {
+  return Number.isFinite(location.accuracy) && location.accuracy <= PRECISE_LOCATION_THRESHOLD_METERS;
 }
