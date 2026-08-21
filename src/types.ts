@@ -1,4 +1,4 @@
-export const SCHEMA_VERSION = 3 as const;
+export const SCHEMA_VERSION = 4 as const;
 
 export type DateKey = `${number}-${number}-${number}`;
 export type PrayerId = 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
@@ -6,6 +6,59 @@ export type SessionKind = 'tahfiz' | 'qudurat';
 export type TimerStatus = 'idle' | 'running' | 'paused' | 'completed';
 export type TaskStatus = 'completed' | 'skipped' | 'cancelled' | 'missed';
 export type WorkoutId = 'A' | 'B' | 'C' | 'D';
+
+export type PrayerTimingStatus = 'unknown' | 'on-time' | 'late';
+export type CongregationStatus = 'unknown' | 'yes' | 'no' | 'not-applicable';
+
+export interface PrayerDetail {
+  performedAt: string;
+  timing: PrayerTimingStatus;
+  congregation: CongregationStatus;
+  note: string;
+}
+
+export type TahfizAttendanceStatus =
+  | 'unrecorded'
+  | 'attended'
+  | 'skipped-intentionally'
+  | 'excused'
+  | 'holiday'
+  | 'trip'
+  | 'missed';
+
+export interface TahfizTracking {
+  status: TahfizAttendanceStatus;
+  newMemorization: string;
+  review: string;
+  recitation: string;
+  mistakes: number;
+  note: string;
+}
+
+export interface QuduratTracking {
+  lessonName: string;
+  questions: number;
+  correct: number;
+  mistakesReviewed: number;
+}
+
+export type DailyLogKind = 'meal' | 'water' | 'prayer' | 'shower' | 'nap' | 'free' | 'custom';
+
+export interface DailyLog {
+  id: string;
+  kind: DailyLogKind;
+  label: string;
+  createdAt: number;
+  durationMinutes?: number;
+  note?: string;
+}
+
+export interface ActiveDailyActivity {
+  id: string;
+  kind: DailyLogKind;
+  label: string;
+  startedAt: number;
+}
 
 export interface PersistentTimer {
   status: TimerStatus;
@@ -81,10 +134,19 @@ export interface ResolvedDay {
 export interface DayRecord {
   date: DateKey;
   prayers: Record<PrayerId, boolean>;
+  prayerDetails: Record<PrayerId, PrayerDetail>;
   sessions: Record<SessionKind, PersistentTimer>;
   sessionNotes: Partial<Record<SessionKind, string>>;
+  tahfiz: TahfizTracking;
+  qudurat: QuduratTracking;
   taskStatuses: Record<string, TaskStatus>;
   movementCompleted: boolean;
+  dayStartedAt: number | null;
+  dayEndedAt: number | null;
+  wakeTime: string;
+  bedTime: string;
+  logs: DailyLog[];
+  activeActivity: ActiveDailyActivity | null;
   notes: string;
 }
 
@@ -158,6 +220,11 @@ export interface RoutineSettings {
   userName: string;
   reducedMotion: boolean;
   lastSeenVersion: string;
+  wakeTarget: string;
+  sleepTarget: string;
+  quduratTargetMinutes: number;
+  quduratQuestionTarget: number;
+  workoutTargetMinutes: number;
 }
 
 export interface RoutineState {
