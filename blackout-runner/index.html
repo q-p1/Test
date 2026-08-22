@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no,maximum-scale=1"/>
+<meta name="theme-color" content="#05070d"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Blackout Runner"/>
+
+<title>BLACKOUT // RUNNER</title>
+<style>
+:root{--bg:#05070d;--panel:#0a1020e8;--line:#28385f;--cyan:#55e9ff;--pink:#ff5b91;--gold:#ffd166;--green:#71f79f;--muted:#8592b7}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#03050a;color:white;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"SF Pro Display",sans-serif;touch-action:none;user-select:none}
+button{font:inherit}
+canvas{position:fixed;inset:0;width:100%;height:100%;display:block;background:#05070d}
+#overlay{position:fixed;inset:0;pointer-events:none;padding:max(12px,env(safe-area-inset-top)) 12px max(12px,env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:space-between;z-index:4}
+#hudTop{display:flex;gap:10px;align-items:flex-start;justify-content:space-between;text-shadow:0 2px 12px #000}
+.hudBlock{min-width:86px}.hudBlock small{display:block;color:#8290b6;letter-spacing:.12em;font-size:8px;font-weight:900}.hudBlock b{font-size:14px}
+#bars{width:min(58vw,340px);display:grid;gap:5px}.bar{height:9px;border:1px solid #29406b;background:#07101e;border-radius:99px;overflow:hidden}.bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff466f,#ff8cab)}.bar.shield i{background:linear-gradient(90deg,#3f7cff,#56ebff)}.bar.energy i{background:linear-gradient(90deg,#9a6cff,#ff78d7)}
+#objective{position:absolute;top:calc(max(12px,env(safe-area-inset-top)) + 54px);left:50%;transform:translateX(-50%);padding:7px 12px;border:1px solid #24365b;background:#07101dcc;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.06em;color:#cfe7ff;backdrop-filter:blur(12px)}
+#roomBanner{position:absolute;top:24%;left:50%;transform:translate(-50%,14px);opacity:0;text-align:center;transition:.25s;filter:drop-shadow(0 7px 20px #000);font-weight:1000;letter-spacing:-.04em;font-size:36px}#roomBanner.show{opacity:1;transform:translate(-50%,0)}#roomBanner small{display:block;font-size:10px;letter-spacing:.2em;color:#8ca0cc;margin-bottom:4px}
+#toast{position:absolute;top:35%;left:50%;transform:translate(-50%,8px);opacity:0;transition:.16s;background:#081221e8;border:1px solid #2d4775;padding:9px 14px;border-radius:999px;font-weight:950;font-size:12px}#toast.show{opacity:1;transform:translate(-50%,0)}
+#controls{position:fixed;inset:0;z-index:5;pointer-events:none}.joyArea{position:absolute;left:14px;bottom:max(18px,env(safe-area-inset-bottom));width:150px;height:150px;pointer-events:auto}.joyBase{position:absolute;width:118px;height:118px;border-radius:50%;left:7px;bottom:7px;border:1px solid #48628c88;background:#07101d73;backdrop-filter:blur(5px);box-shadow:inset 0 0 28px #182c5055}.joyStick{position:absolute;width:52px;height:52px;border-radius:50%;left:40px;bottom:40px;background:radial-gradient(circle at 35% 30%,#a5f8ff,#41b8e8 55%,#24577d);box-shadow:0 0 24px #55e9ff55;border:2px solid #bdf9ff99;transition:transform .03s linear}
+.action{pointer-events:auto;position:absolute;border-radius:24px;border:1px solid #405d8f;background:#0a1530dc;color:#fff;font-weight:1000;box-shadow:0 12px 30px #0008;backdrop-filter:blur(8px);text-shadow:0 2px 8px #000}.action:active{transform:scale(.94)}
+#attack{right:22px;bottom:max(24px,env(safe-area-inset-bottom));width:94px;height:78px;background:linear-gradient(145deg,#7f204a,#f14379)}
+#shoot{right:124px;bottom:94px;width:72px;height:64px;background:linear-gradient(145deg,#123c76,#2aa9d9)}
+#dash{right:120px;bottom:max(18px,env(safe-area-inset-bottom));width:66px;height:58px}
+#special{right:24px;bottom:112px;width:78px;height:64px;background:linear-gradient(145deg,#6d3b8f,#c457e8)}
+#interact{right:22px;bottom:190px;width:88px;height:48px;display:none;background:linear-gradient(145deg,#74601b,#d9a92b);font-size:11px}
+.action span{display:block;font-size:8px;color:#d9e5ff99;letter-spacing:.08em;margin-top:2px}
+.screen{position:fixed;inset:0;z-index:20;display:none;place-items:center;padding:20px;background:linear-gradient(180deg,#03050ae8,#020308f5);overflow:auto}.screen.show{display:grid}.panel{width:min(94vw,580px);background:linear-gradient(180deg,#0a1224f2,#070b15f5);border:1px solid #273b64;border-radius:30px;padding:24px;box-shadow:0 30px 100px #000b, inset 0 1px 0 #ffffff0d}.logo{font-weight:1000;font-size:50px;line-height:.85;letter-spacing:-.06em}.logo em{font-style:normal;color:var(--cyan)}.kicker{font-size:9px;letter-spacing:.24em;color:#7f8eaf;font-weight:1000;margin-bottom:10px}.sub{color:#91a0c6;line-height:1.5;font-size:13px;margin:14px 0 18px}.primary,.choice,.menuBtn{border:1px solid #2a4777;background:#0d1831;color:#fff;border-radius:18px;padding:14px;font-weight:950}.primary{width:100%;font-size:16px;background:linear-gradient(135deg,#3755ff,#11b8dc);border:0;box-shadow:0 14px 30px #2446ff3d}.menuGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.menuBtn.active{border-color:#55e9ff;color:#aaf8ff;background:#0c2637}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 0}.meta div{background:#050a15;border:1px solid #1b2e50;border-radius:15px;padding:10px;text-align:center}.meta b{display:block;font-size:19px}.meta small{color:#7787ad;font-size:8px;letter-spacing:.1em}
+#roomSelect .panel,#upgrade .panel,#shop .panel,#death .panel{width:min(94vw,650px)}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.choice{text-align:left;min-height:128px;background:linear-gradient(160deg,#0b162d,#07101f);position:relative;overflow:hidden}.choice:active{transform:scale(.98)}.choice b{display:block;font-size:14px;margin-bottom:5px}.choice small{color:#8394bb;line-height:1.35}.choice .icon{font-size:26px;margin-bottom:9px}.choice.activeLoad{border-color:#55e9ff;box-shadow:0 0 22px #55e9ff22}.choice.rare{border-color:#467dff}.choice.epic{border-color:#bd6fff}.choice.legendary{border-color:#ffc95c;box-shadow:0 0 22px #ffc95c22}.tag{position:absolute;right:8px;top:8px;font-size:7px;letter-spacing:.12em;color:#92a3ca}.price{margin-top:10px;color:#ffd166;font-weight:1000;font-size:11px}
+#minimap{position:fixed;right:12px;top:calc(max(12px,env(safe-area-inset-top)) + 72px);width:90px;height:56px;z-index:5;pointer-events:none;opacity:.75}
+#pauseBtn{position:fixed;right:12px;top:max(12px,env(safe-area-inset-top));z-index:7;width:42px;height:42px;border-radius:14px;border:1px solid #263b61;background:#081120cc;color:#fff;font-weight:1000;pointer-events:auto;display:none}
+@media (max-width:420px){.logo{font-size:43px}.cards{grid-template-columns:1fr}.choice{min-height:auto}.panel{padding:20px}.joyArea{transform:scale(.9);transform-origin:left bottom}#shoot{right:116px}#dash{right:112px}}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas><canvas id="minimap"></canvas>
+<div id="overlay">
+ <div id="hudTop"><div id="bars"><div class="bar"><i id="hpBar"></i></div><div class="bar shield"><i id="shieldBar"></i></div><div class="bar energy"><i id="energyBar"></i></div></div><div class="hudBlock" style="text-align:right;padding-right:46px"><small>RUN</small><b id="stageText">1-1</b></div></div>
+ <div id="objective">CLEAR THE ROOM</div><div id="roomBanner"></div><div id="toast"></div>
+ <div></div>
+</div>
+<div id="controls">
+ <div class="joyArea" id="joyArea"><div class="joyBase"></div><div class="joyStick" id="joyStick"></div></div>
+ <button class="action" id="attack">SLASH<span>MELEE</span></button>
+ <button class="action" id="shoot">FIRE<span>RANGED</span></button>
+ <button class="action" id="dash">DASH<span id="dashCd">READY</span></button>
+ <button class="action" id="special">BURST<span id="burstCd">CHARGE</span></button>
+ <button class="action" id="interact">INTERACT</button>
+</div>
+<button id="pauseBtn">Ⅱ</button>
+
+<section id="menu" class="screen show"><div class="panel">
+ <div class="kicker">A MOBILE ROGUELITE BUILT FOR ONE THUMB</div><div class="logo">BLACKOUT<br><em>// RUNNER</em></div>
+ <div class="sub">Break into a dead megastructure, clear rooms, loot weapons, survive bosses, and build a run strong enough to reach the Core. Every room branches. Every run stacks differently.</div>
+ <div class="menuGrid"><button class="menuBtn active" data-diff="normal">RUNNER</button><button class="menuBtn" data-diff="hard">NIGHTMARE</button></div>
+ <div class="kicker" style="margin-top:16px">STARTING LOADOUT</div>
+ <div class="cards" id="loadoutCards">
+  <button class="choice activeLoad" data-loadout="vanguard"><div class="icon">⚔️</div><b>VANGUARD</b><small>Heavy blade, strong shield, balanced rifle.</small></button>
+  <button class="choice" data-loadout="gunner"><div class="icon">⌁</div><b>GUNNER</b><small>Fast rifle, weak melee, high critical chance.</small></button>
+  <button class="choice" data-loadout="reaper"><div class="icon">◐</div><b>REAPER</b><small>Fast movement, brutal melee, low shielding.</small></button>
+ </div>
+ <div class="meta"><div><b id="metaBest">0</b><small>BEST FLOOR</small></div><div><b id="metaCredits">0</b><small>CREDITS</small></div><div><b id="metaRuns">0</b><small>RUNS</small></div></div>
+ <button id="startBtn" class="primary">ENTER THE BLACKOUT</button><button id="armoryBtn" class="menuBtn" style="width:100%;margin-top:10px">ARMORY // PERMANENT UPGRADES</button>
+ <div class="sub" style="font-size:10px;text-align:center;margin-bottom:0">Left thumb moves • Slash for melee • Fire for ranged • Dash through danger • Burst when charged</div>
+</div></section>
+
+<section id="roomSelect" class="screen"><div class="panel"><div class="kicker">ROUTE SELECTION</div><div class="logo" style="font-size:34px">CHOOSE YOUR NEXT ROOM</div><div class="sub" id="routeSub">The building changes every run.</div><div class="cards" id="roomCards"></div></div></section>
+<section id="upgrade" class="screen"><div class="panel"><div class="kicker">AUGMENT FOUND</div><div class="logo" style="font-size:34px">CHOOSE ONE</div><div class="sub">Your build is the difference between “clean run” and “what killed me?”</div><div class="cards" id="upgradeCards"></div></div></section>
+<section id="shop" class="screen"><div class="panel"><div class="kicker">BLACK MARKET NODE</div><div class="logo" style="font-size:34px">SPEND CREDITS</div><div class="sub" id="shopSub"></div><div class="cards" id="shopCards"></div><button id="leaveShop" class="primary" style="margin-top:12px">LEAVE SHOP</button></div></section>
+
+<section id="armory" class="screen"><div class="panel"><div class="kicker">PERMANENT PROGRESSION</div><div class="logo" style="font-size:34px">THE ARMORY</div><div class="sub" id="armorySub">Banked credits survive every failed run. Spend them here.</div><div class="cards" id="armoryCards"></div><button id="leaveArmory" class="primary" style="margin-top:12px">BACK TO MENU</button></div></section>
+<section id="death" class="screen"><div class="panel"><div class="kicker">RUN TERMINATED</div><div class="logo" style="font-size:38px">BLACKOUT WON</div><div class="sub" id="deathText"></div><div class="meta"><div><b id="dFloor">0</b><small>FLOOR</small></div><div><b id="dKills">0</b><small>KILLS</small></div><div><b id="dCredits">0</b><small>CREDITS</small></div></div><button id="retryBtn" class="primary">RUN IT BACK</button><button id="menuBtn" class="menuBtn" style="width:100%;margin-top:10px">MAIN MENU</button></div></section>
+<section id="pause" class="screen"><div class="panel"><div class="logo" style="font-size:36px">PAUSED</div><div class="sub">The enemies are politely waiting. Suspicious behavior.</div><button id="resumeBtn" class="primary">RESUME</button><button id="quitBtn" class="menuBtn" style="width:100%;margin-top:10px">ABANDON RUN</button></div></section>
+
+<script src="game-1.js"></script><script src="game-2.js"></script><script src="game-3.js"></script><script src="game-4.js"></script><script src="game-5.js"></script>
+</body></html>
