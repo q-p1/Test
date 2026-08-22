@@ -109,6 +109,9 @@ test('daily journal, quick logs, recurring routine, and backup survive real UI f
   await expect(journal.locator('.journal-log-list')).toContainText('مراجعة مشروع');
   await journal.getByLabel('وقت النوم').fill('22:40');
   await journal.getByRole('button', { name: /انتهى يومي/ }).click();
+  const reportDialog = page.getByRole('dialog', { name: 'تقرير نهاية اليوم' });
+  await expect(reportDialog).toBeVisible();
+  await reportDialog.getByRole('button', { name: 'إغلاق النافذة', exact: true }).click();
 
   await navigate(page, 'الإعدادات');
   const recurring = page.locator('.recurring-form');

@@ -8,6 +8,7 @@ import './styles.css';
 import './rich-tracking.css';
 import './prayer-times.css';
 import './school.css';
+import './report.css';
 
 document.documentElement.lang = 'ar';
 document.documentElement.dir = 'rtl';
