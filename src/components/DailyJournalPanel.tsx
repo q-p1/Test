@@ -5,6 +5,7 @@ import { toDateKey } from '../lib/date';
 import { getDayRecord } from '../lib/storage';
 import { useRoutine } from '../state/RoutineContext';
 import type { DailyLogKind, DateKey } from '../types';
+import { EndDayReportSheet } from './EndDayReportSheet';
 import { Icon } from './Icon';
 import { ProgressRing } from './ProgressRing';
 
@@ -40,6 +41,7 @@ export function DailyJournalPanel({ date }: { date: DateKey }) {
   const [customLabel, setCustomLabel] = useState('');
   const [customKind, setCustomKind] = useState<DailyLogKind>('custom');
   const [customNote, setCustomNote] = useState('');
+  const [reportOpen, setReportOpen] = useState(false);
 
   const score = useMemo(() => calculateDayScore(state, date, now), [state, date, now]);
   const streak = useMemo(() => calculateStreak(state, date, now), [state, date, now]);
@@ -54,6 +56,11 @@ export function DailyJournalPanel({ date }: { date: DateKey }) {
     else actions.addDailyLog(date, customKind, label, customNote);
     setCustomLabel('');
     setCustomNote('');
+  };
+
+  const finishOrOpenReport = () => {
+    if (!day.dayEndedAt) actions.endDay(date, bedTimeRef.current);
+    setReportOpen(true);
   };
 
   return (
@@ -89,9 +96,9 @@ export function DailyJournalPanel({ date }: { date: DateKey }) {
         </article>
 
         <article className={day.dayEndedAt ? 'day-boundary-card is-done' : 'day-boundary-card'}>
-          <div><span className="feature-icon"><Icon name="moon" /></span><div><strong>إغلاق اليوم</strong><small>{day.dayEndedAt ? `أغلق عند ${formatTimestamp(day.dayEndedAt)}` : 'وقت النوم وملاحظة اليوم يبقون محفوظين'}</small></div></div>
+          <div><span className="feature-icon"><Icon name="moon" /></span><div><strong>إغلاق اليوم</strong><small>{day.dayEndedAt ? `أغلق عند ${formatTimestamp(day.dayEndedAt)} · تقريرك جاهز` : 'بعد الإغلاق تختار التقرير كنص أو صورة'}</small></div></div>
           <label className="field field--compact"><span>وقت النوم</span><input type="time" value={bedTime} disabled={Boolean(day.dayEndedAt)} onChange={(event) => { bedTimeRef.current = event.target.value; setBedTime(event.target.value); }} /></label>
-          <button className="button button--secondary button--full" type="button" disabled={Boolean(day.dayEndedAt)} onClick={() => actions.endDay(date, bedTimeRef.current)}><Icon name="check" /> {day.dayEndedAt ? 'اليوم مقفل ✓' : 'انتهى يومي'}</button>
+          <button className={`button ${day.dayEndedAt ? 'button--gold' : 'button--secondary'} button--full`} type="button" onClick={finishOrOpenReport}><Icon name={day.dayEndedAt ? 'award' : 'check'} /> {day.dayEndedAt ? 'عرض تقرير اليوم' : 'انتهى يومي'}</button>
         </article>
       </div>
 
@@ -135,6 +142,8 @@ export function DailyJournalPanel({ date }: { date: DateKey }) {
         )}
         {day.logs.length > 0 && <button className="text-button" type="button" onClick={() => actions.undoLastDailyLog(date)}>تراجع عن آخر سجل</button>}
       </div>
+
+      <EndDayReportSheet key={`end-report-${date}`} open={reportOpen} date={date} onClose={() => setReportOpen(false)} />
     </section>
   );
 }
