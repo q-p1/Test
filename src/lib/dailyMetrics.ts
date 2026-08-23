@@ -38,11 +38,9 @@ export function calculateDayScore(state: RoutineState, date: DateKey, now = Date
   const qudurat = resolved.items.find((item) => item.kind === 'qudurat');
   if (qudurat && qudurat.status !== 'cancelled') {
     total += 30;
-    const targetMs = Math.max(30, state.settings.quduratTargetMinutes) * 60_000;
+    const targetMs = Math.max(15, Math.min(240, state.settings.quduratTargetMinutes || 60)) * 60_000;
     const timeRatio = Math.min(1, getElapsedMs(day.sessions.qudurat, now) / targetMs);
-    const questionTarget = state.settings.quduratQuestionTarget;
-    const questionRatio = questionTarget > 0 ? Math.min(1, day.qudurat.questions / questionTarget) : 1;
-    earned += 30 * (timeRatio * 0.72 + questionRatio * 0.28);
+    earned += 30 * timeRatio;
   }
 
   const workout = resolved.items.find((item) => item.kind === 'workout');
