@@ -92,12 +92,11 @@ export function SettingsPage() {
       </section>
 
       <section className="settings-section" aria-labelledby="targets-title">
-        <div className="settings-heading"><span><Icon name="award" /></span><div><h2 id="targets-title">أهداف يومك</h2><p>رجعت الأهداف التي يعتمد عليها ملخص اليوم والأسبوع.</p></div></div>
+        <div className="settings-heading"><span><Icon name="award" /></span><div><h2 id="targets-title">أهداف يومك</h2><p>هدف القدرات صار بالوقت، وعدد الأسئلة يبقى سجلًا للجلسة فقط.</p></div></div>
         <div className="settings-form-grid">
           <label className="field"><span>وقت الصحوة الافتراضي</span><input type="time" value={state.settings.wakeTarget} onChange={(event) => actions.updateSettings({ wakeTarget: event.target.value })} /></label>
           <label className="field"><span>وقت النوم الافتراضي</span><input type="time" value={state.settings.sleepTarget} onChange={(event) => actions.updateSettings({ sleepTarget: event.target.value })} /></label>
-          <label className="field"><span>هدف القدرات بالدقائق</span><input type="number" inputMode="numeric" min="30" max="240" value={state.settings.quduratTargetMinutes} onChange={(event) => actions.updateSettings({ quduratTargetMinutes: clamp(Number(event.target.value), 30, 240) })} /></label>
-          <label className="field"><span>هدف أسئلة القدرات</span><input type="number" inputMode="numeric" min="0" max="1000" value={state.settings.quduratQuestionTarget} onChange={(event) => actions.updateSettings({ quduratQuestionTarget: clamp(Number(event.target.value), 0, 1000) })} /></label>
+          <label className="field"><span>هدف القدرات بالدقائق</span><input key={`qudurat-target-${state.settings.quduratTargetMinutes}`} aria-label="هدف القدرات بالدقائق" type="number" inputMode="numeric" min="15" max="240" step="5" defaultValue={state.settings.quduratTargetMinutes} onBlur={(event) => { const raw = event.target.value.trim(); if (!raw) { event.target.value = String(state.settings.quduratTargetMinutes); return; } actions.updateSettings({ quduratTargetMinutes: clamp(Number(raw), 15, 240) }); }} onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }} /></label>
           <label className="field"><span>الوقت المتوقع للحصة الرياضية</span><input type="number" inputMode="numeric" min="10" max="90" value={Math.min(90, state.settings.workoutTargetMinutes)} onChange={(event) => actions.updateSettings({ workoutTargetMinutes: clamp(Number(event.target.value), 10, 90) })} /></label>
         </div>
       </section>
