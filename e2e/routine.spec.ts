@@ -80,7 +80,7 @@ test('rich prayer, Tahfiz, and Qudurat details persist together', async ({ page 
   await qudurat.getByLabel('الأسئلة').fill('20');
   await qudurat.getByLabel('الصحيح').fill('17');
   await qudurat.getByLabel('أخطاء راجعتها').fill('3');
-  await expect(qudurat.locator('.accuracy-tile')).toContainText('85%');
+  await expect(qudurat.getByLabel('الدقة 85%', { exact: true })).toContainText('85%');
 
   await page.reload();
   const persisted = await page.evaluate((key) => {

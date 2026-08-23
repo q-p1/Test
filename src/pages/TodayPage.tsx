@@ -5,6 +5,7 @@ import { addDays, currentMinutes, formatArabicDate, formatClock, minutesFromTime
 import { applyPrayerScheduleToItems } from '../lib/prayerTimes';
 import { resolveDay } from '../lib/schedule';
 import { getDayRecord } from '../lib/storage';
+import { getElapsedMs } from '../lib/timer';
 import { useRoutine } from '../state/RoutineContext';
 import type { DateKey, DayRecord, ResolvedScheduleItem, RoutineState, TaskStatus } from '../types';
 import { DailyJournalPanel } from '../components/DailyJournalPanel';
@@ -55,9 +56,12 @@ export function TodayPage({ onOpenFitness }: TodayPageProps) {
   const hasException = resolved.appliedOverrides.length > 0;
   const tahfizPositive = day.sessions.tahfiz.status === 'completed' || ['attended', 'trip'].includes(day.tahfiz.status);
   const tahfizMetric = tahfizTrip ? 'رحلة' : tahfizDisabledReason ? 'ملغى' : tahfizLabel(day);
-  const quduratAccuracy = day.qudurat.questions > 0 ? Math.round((day.qudurat.correct / day.qudurat.questions) * 100) : null;
-  const quduratMetric = day.qudurat.questions > 0 ? `${day.qudurat.questions} سؤال · ${quduratAccuracy}%` : quduratDisabledReason ? 'ملغاة' : sessionLabel(day.sessions.qudurat.status);
-  const achievements = prayersDone + Number(tahfizPositive) + Number(day.sessions.qudurat.status === 'completed') + Number(workoutDone || day.movementCompleted);
+  const quduratTargetMinutes = Math.max(15, Math.min(240, Math.round(state.settings.quduratTargetMinutes || 60)));
+  const quduratElapsedMs = getElapsedMs(day.sessions.qudurat, nowMs);
+  const quduratMinutes = Math.floor(quduratElapsedMs / 60_000);
+  const quduratGoalDone = quduratElapsedMs >= quduratTargetMinutes * 60_000;
+  const quduratMetric = quduratDisabledReason ? 'ملغاة' : `${quduratMinutes}/${quduratTargetMinutes} د`;
+  const achievements = prayersDone + Number(tahfizPositive) + Number(quduratGoalDone) + Number(workoutDone || day.movementCompleted);
 
   return (
     <div className="page page--today" data-page="today">
@@ -85,7 +89,7 @@ export function TodayPage({ onOpenFitness }: TodayPageProps) {
         <div className="metric-grid">
           <MetricCard icon="prayer" label="الصلاة" value={`${prayersDone}/5`} state={prayersDone === 5 ? 'done' : 'active'} />
           <MetricCard icon="book" label="التحفيظ" value={tahfizMetric} state={tahfizPositive ? 'done' : tahfizDisabledReason || ['excused', 'holiday', 'skipped-intentionally'].includes(day.tahfiz.status) ? 'neutral' : 'active'} />
-          <MetricCard icon="brain" label="القدرات" value={quduratMetric} state={day.sessions.qudurat.status === 'completed' ? 'done' : quduratDisabledReason ? 'neutral' : 'active'} />
+          <MetricCard icon="brain" label="القدرات" value={quduratMetric} state={quduratGoalDone ? 'done' : quduratDisabledReason ? 'neutral' : 'active'} />
           <MetricCard icon="fitness" label="الرياضة" value={workoutMetric} state={workoutDone || day.movementCompleted ? 'done' : 'neutral'} onClick={onOpenFitness} />
         </div>
       </section>

@@ -7,7 +7,7 @@ import { Icon } from './Icon';
 
 const labels: Record<SessionKind, { title: string; subtitle: string; icon: 'book' | 'brain' }> = {
   tahfiz: { title: 'التحفيظ', subtitle: 'الحضور والمحتوى والوقت، كلها محفوظة لليوم نفسه', icon: 'book' },
-  qudurat: { title: 'القدرات', subtitle: 'جلسة دراسة عميقة مع الدرس والأسئلة والدقة', icon: 'brain' },
+  qudurat: { title: 'القدرات', subtitle: 'هدف زمني واضح، والأسئلة والدقة تبقى سجلًا للجلسة', icon: 'brain' },
 };
 
 const statusLabels: Record<PersistentTimer['status'], string> = {
@@ -25,6 +25,8 @@ const tahfizStatuses: Array<{ value: TahfizAttendanceStatus; label: string; tone
   { value: 'trip', label: 'رحلة / فعالية', tone: 'good' },
   { value: 'missed', label: 'فاتني', tone: 'warn' },
 ];
+
+const quduratGoalPresets = [30, 45, 60, 90, 120];
 
 export function SessionTimerCard({
   date,
@@ -45,10 +47,23 @@ export function SessionTimerCard({
   const details = labels[kind];
   const elapsed = getElapsedMs(timer, now);
   const isTahfiz = kind === 'tahfiz';
+  const isQudurat = kind === 'qudurat';
+  const targetMinutes = clampQuduratTarget(state.settings.quduratTargetMinutes);
+  const targetMs = targetMinutes * 60_000;
+  const remainingMs = Math.max(0, targetMs - elapsed);
+  const overGoalMs = Math.max(0, elapsed - targetMs);
+  const goalProgress = targetMs > 0 ? Math.min(100, Math.floor((elapsed / targetMs) * 100)) : 0;
+  const goalReached = isQudurat && elapsed >= targetMs;
   const tahfizStatus = day.tahfiz.status;
   const manuallyClosedTahfiz = isTahfiz && ['skipped-intentionally', 'excused', 'holiday', 'trip', 'missed'].includes(tahfizStatus);
   const effectiveDisabledReason = disabledReason
     ?? (manuallyClosedTahfiz ? tahfizStatusLabel(tahfizStatus) : undefined);
+
+  const saveQuduratTarget = (raw: string) => {
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return;
+    actions.updateSettings({ quduratTargetMinutes: clampQuduratTarget(value) });
+  };
 
   return (
     <article className={`session-card session-card--rich ${effectiveDisabledReason ? 'is-cancelled' : ''}`} data-testid={`${kind}-session`}>
@@ -89,6 +104,51 @@ export function SessionTimerCard({
                 مسح الحالة
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {isQudurat && !effectiveDisabledReason && (
+        <div className="tahfiz-status-block" data-testid="qudurat-goal">
+          <div className="rich-field-heading">
+            <strong>هدف اليوم</strong>
+            <small>{goalReached ? `وصلت للهدف · ${goalProgress}%` : `أنجزت ${goalProgress}% · باقي ${formatDuration(remainingMs)}`}</small>
+          </div>
+          <div className="qudurat-stats-grid">
+            <label className="field field--compact">
+              <span>مدة الهدف بالدقائق</span>
+              <input
+                key={`qudurat-goal-${targetMinutes}`}
+                aria-label="مدة هدف القدرات بالدقائق"
+                type="number"
+                inputMode="numeric"
+                min="15"
+                max="240"
+                step="5"
+                defaultValue={targetMinutes}
+                onBlur={(event) => saveQuduratTarget(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur();
+                }}
+              />
+            </label>
+            <div className="accuracy-tile" aria-label={goalReached ? `تجاوزت الهدف بمقدار ${formatDuration(overGoalMs)}` : `المتبقي ${formatDuration(remainingMs)}`}>
+              <span>{goalReached ? 'فوق الهدف' : 'المتبقي'}</span>
+              <strong dir="ltr">{goalReached ? `+${formatDuration(overGoalMs)}` : formatDuration(remainingMs)}</strong>
+            </div>
+          </div>
+          <div className="status-chip-grid" role="group" aria-label="اختيارات سريعة لهدف القدرات">
+            {quduratGoalPresets.map((minutes) => (
+              <button
+                key={minutes}
+                type="button"
+                className={`status-choice status-choice--neutral ${targetMinutes === minutes ? 'is-selected' : ''}`}
+                aria-pressed={targetMinutes === minutes}
+                onClick={() => actions.updateSettings({ quduratTargetMinutes: minutes })}
+              >
+                {minutes} د
+              </button>
+            ))}
           </div>
         </div>
       )}
@@ -210,8 +270,8 @@ function QuduratDetails({ date, note }: { date: DateKey; note?: string }) {
   return (
     <div className="rich-session-fields">
       <div className="rich-field-heading">
-        <strong>تقدم القدرات</strong>
-        <small>الدرس + الأسئلة + الدقة، مو وقت وبس.</small>
+        <strong>سجل الجلسة</strong>
+        <small>عدد الأسئلة والدقة معلومات مفيدة، لكن هدف اليوم صار وقتًا.</small>
       </div>
 
       <label className="field field--compact">
@@ -277,6 +337,11 @@ function QuduratDetails({ date, note }: { date: DateKey; note?: string }) {
       </label>
     </div>
   );
+}
+
+function clampQuduratTarget(value: number): number {
+  const rounded = Math.round(Number(value) || 60);
+  return Math.max(15, Math.min(240, rounded));
 }
 
 function tahfizStatusLabel(status: TahfizAttendanceStatus): string {
