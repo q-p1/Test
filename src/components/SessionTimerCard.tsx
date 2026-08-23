@@ -7,7 +7,7 @@ import { Icon } from './Icon';
 
 const labels: Record<SessionKind, { title: string; subtitle: string; icon: 'book' | 'brain' }> = {
   tahfiz: { title: 'التحفيظ', subtitle: 'الحضور والمحتوى والوقت، كلها محفوظة لليوم نفسه', icon: 'book' },
-  qudurat: { title: 'القدرات', subtitle: 'جلسة دراسة عميقة مع الدرس والأسئلة والدقة', icon: 'brain' },
+  qudurat: { title: 'القدرات', subtitle: 'هدف زمني واضح، مع الدرس والأسئلة والدقة كتفاصيل إضافية', icon: 'brain' },
 };
 
 const statusLabels: Record<PersistentTimer['status'], string> = {
@@ -25,6 +25,8 @@ const tahfizStatuses: Array<{ value: TahfizAttendanceStatus; label: string; tone
   { value: 'trip', label: 'رحلة / فعالية', tone: 'good' },
   { value: 'missed', label: 'فاتني', tone: 'warn' },
 ];
+
+const quduratGoalPresets = [30, 45, 60, 90];
 
 export function SessionTimerCard({
   date,
@@ -45,6 +47,9 @@ export function SessionTimerCard({
   const details = labels[kind];
   const elapsed = getElapsedMs(timer, now);
   const isTahfiz = kind === 'tahfiz';
+  const quduratTargetMinutes = clampQuduratTarget(state.settings.quduratTargetMinutes);
+  const quduratTargetMs = quduratTargetMinutes * 60_000;
+  const quduratRemainingMs = Math.max(0, quduratTargetMs - elapsed);
   const tahfizStatus = day.tahfiz.status;
   const manuallyClosedTahfiz = isTahfiz && ['skipped-intentionally', 'excused', 'holiday', 'trip', 'missed'].includes(tahfizStatus);
   const effectiveDisabledReason = disabledReason
@@ -94,6 +99,48 @@ export function SessionTimerCard({
       )}
 
       <div className="timer-display" dir="ltr" aria-live="polite">{formatDuration(elapsed)}</div>
+
+      {!isTahfiz && !effectiveDisabledReason && (
+        <div className="rich-session-fields" aria-label="هدف القدرات اليومي">
+          <div className="rich-field-heading">
+            <strong>هدف اليوم</strong>
+            <small>{quduratRemainingMs === 0 ? 'وصلت الهدف، وكمل إذا ودك.' : 'ينقص مع كل دقيقة دراسة فعلية.'}</small>
+          </div>
+          <div className="qudurat-stats-grid">
+            <div className="accuracy-tile" aria-label={quduratRemainingMs === 0 ? 'اكتمل هدف القدرات اليومي' : `متبقي ${formatDuration(quduratRemainingMs)}`}>
+              <span>{quduratRemainingMs === 0 ? 'تم الهدف ✓' : 'المتبقي'}</span>
+              <strong>{formatDuration(quduratRemainingMs)}</strong>
+            </div>
+            <label className="field field--compact">
+              <span>الهدف بالدقائق</span>
+              <input
+                key={quduratTargetMinutes}
+                aria-label="هدف القدرات بالدقائق"
+                type="number"
+                inputMode="numeric"
+                min="15"
+                max="240"
+                defaultValue={quduratTargetMinutes}
+                onBlur={(event) => actions.updateSettings({ quduratTargetMinutes: clampQuduratTarget(Number(event.currentTarget.value)) })}
+                onKeyDown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+              />
+            </label>
+          </div>
+          <div className="choice-chips" role="group" aria-label="اختيارات سريعة لهدف القدرات">
+            {quduratGoalPresets.map((minutes) => (
+              <button
+                key={minutes}
+                type="button"
+                className={`choice-chip ${quduratTargetMinutes === minutes ? 'is-selected' : ''}`}
+                aria-pressed={quduratTargetMinutes === minutes}
+                onClick={() => actions.updateSettings({ quduratTargetMinutes: minutes })}
+              >
+                {minutes} د
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {!effectiveDisabledReason && (
         <div className="timer-actions">
@@ -211,7 +258,7 @@ function QuduratDetails({ date, note }: { date: DateKey; note?: string }) {
     <div className="rich-session-fields">
       <div className="rich-field-heading">
         <strong>تقدم القدرات</strong>
-        <small>الدرس + الأسئلة + الدقة، مو وقت وبس.</small>
+        <small>الوقت هو الهدف؛ الأسئلة والدقة تساعدك تفهم جودة الجلسة.</small>
       </div>
 
       <label className="field field--compact">
@@ -289,4 +336,9 @@ function tahfizStatusLabel(status: TahfizAttendanceStatus): string {
     trip: 'رحلة / فعالية تحفيظ',
     missed: 'فاتني التحفيظ',
   }[status];
+}
+
+function clampQuduratTarget(value: number): number {
+  if (!Number.isFinite(value)) return 60;
+  return Math.max(15, Math.min(240, Math.round(value)));
 }
