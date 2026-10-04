@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f1a1f">
+<title>جرّب مفاتح</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lalezar&family=Readex+Pro:wght@400;600&display=swap">
+<style>
+/* Layout: a one-column phone game — sticky team inventory on top, one step card at a time, one action button at the bottom. Single dark look by choice, same world as the explainer videos. */
+:root{
+  --bg:#0f1a1f; --panel:#182a31; --panel2:#1e343c; --line:#2a4149;
+  --fg:#eef3f1; --muted:#9db3b0;
+  --paper:#efe6cf; --ink:#1d2a2f;
+  --gold:#e8b84a; --good:#4cc38a; --bad:#e2604f; --seal:#b8473a;
+  --display:"Lalezar","Segoe UI",Tahoma,sans-serif;
+  --body:"Readex Pro","Segoe UI",Tahoma,sans-serif;
+  color-scheme:dark;
+}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);direction:rtl;padding-inline:16px;margin:0}
+.app{max-width:460px;margin:0 auto;padding-block:10px 28px;display:flex;flex-direction:column;gap:12px}
+
+.inv{position:sticky;top:env(safe-area-inset-top,0px);z-index:3;background:var(--bg);padding-block:8px 6px;display:flex;flex-direction:column;gap:8px}
+.inv .who{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--muted)}
+.inv .who b{font:400 20px var(--display);color:var(--gold)}
+.minute{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:2px 12px;font-size:12px;color:var(--fg)}
+.counts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.cnt{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;transition:border-color .3s,background .3s}
+.cnt .v{font:400 22px/1 var(--display);font-variant-numeric:tabular-nums}
+.cnt .l{font-size:11px;color:var(--muted)}
+.cnt.flash-up{border-color:var(--good);background:#1d3a30}
+.cnt.flash-down{border-color:var(--bad);background:#3a2222}
+.dots{display:flex;gap:4px}
+.dots i{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.dots i.on{background:var(--gold)}
+
+.card{background:radial-gradient(120% 70% at 50% 0%,#1b3139 0%,var(--panel) 75%);border:1px solid var(--line);border-radius:18px;padding:20px 16px;display:flex;flex-direction:column;gap:14px;align-items:center;text-align:center;min-height:56vh;animation:in .35s ease}
+@keyframes in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+h1{font:400 64px/1 var(--display);color:var(--gold);margin:4px 0 0}
+h2{font:400 28px/1.25 var(--display);margin:0;text-wrap:balance}
+p{margin:0;font-size:16px;line-height:1.7;max-width:34ch}
+.dim{color:var(--muted);font-size:14px}
+b.g{color:var(--gold);font-weight:600}
+
+.btn{font:600 16px var(--body);border-radius:14px;padding:13px 16px;cursor:pointer;border:1px solid var(--line);background:var(--panel2);color:var(--fg);width:100%}
+.btn.main{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.btn:disabled{opacity:.4;cursor:default}
+.btn:focus-visible,.slip:focus-visible,.chip:focus-visible,.env:focus-visible,.key:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.choices{display:flex;flex-direction:column;gap:8px;width:100%}
+.choices .btn{text-align:right;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.choices .btn small{color:var(--muted);font-weight:400;font-size:13px}
+
+.envs{display:flex;gap:10px;justify-content:center}
+.env{background:none;border:none;padding:0;cursor:pointer;transition:transform .2s}
+.env:hover{transform:translateY(-4px)}
+.env.gone{opacity:.15;transform:scale(.8) rotate(8deg)}
+.env.pick{transform:scale(1.12)}
+
+.slips{display:flex;flex-direction:column;gap:10px;width:100%}
+.slip{background:var(--paper);color:var(--ink);border:none;border-radius:4px;padding:12px 14px;text-align:right;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 6px 16px rgba(0,0,0,.3);border-top:3px dashed rgba(29,42,47,.3);font-family:var(--body);width:100%}
+.slip .tx{flex:1;min-width:0}
+.slip .h{font-size:12px;opacity:.65}
+.slip .q{font:400 19px/1.35 var(--display)}
+.slip .a{flex:none;width:52px;height:52px;border-radius:10px;display:grid;place-items:center;font:400 34px var(--display);background:var(--ink);color:var(--gold)}
+.slip .a.hid{background:rgba(29,42,47,.12);color:var(--ink);font:600 11px var(--body);text-align:center;line-height:1.3}
+.slip.used{opacity:.35;text-decoration:line-through}
+
+.notes{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:14px;padding:10px 12px;display:flex;flex-direction:column;gap:6px}
+.notes .t{font-size:12px;color:var(--muted);text-align:right}
+.nrow{display:flex;justify-content:space-between;align-items:center}
+.nrow span{font-size:14px}
+.boxes{display:flex;gap:4px;direction:ltr}
+.box{width:30px;height:34px;border:2px dashed #4f6a70;border-radius:6px;display:grid;place-items:center;font:400 22px var(--display);color:var(--gold)}
+.box.f{border-style:solid;border-color:var(--gold)}
+.big .box{width:62px;height:72px;font-size:42px;border-radius:10px}
+.lockico{position:relative;padding-top:26px}
+.lockico::before{content:"";position:absolute;top:0;left:50%;width:56px;height:34px;transform:translateX(-50%);border:7px solid #6f8a8f;border-bottom:none;border-radius:20px 20px 0 0}
+.lockico.open::before{border-color:var(--good);transform:translateX(-50%) translateY(-10px) rotate(-18deg);transform-origin:left bottom;transition:transform .4s}
+
+.sortrow{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;min-height:44px;width:100%;padding:8px;border:2px dashed var(--line);border-radius:12px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chip{background:var(--paper);color:var(--ink);border:none;border-radius:8px;padding:8px 14px;font:400 19px var(--display);cursor:pointer}
+.chip:disabled{opacity:.2;cursor:default}
+.sortrow .chip{cursor:default;outline:2px solid var(--good)}
+.shake{animation:shake .4s}
+@keyframes shake{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+
+.chat{display:flex;flex-direction:column;gap:10px;width:100%}
+.msg{max-width:80%;padding:9px 13px;border-radius:16px;font-size:15px;line-height:1.5;text-align:right;animation:in .3s}
+.msg small{display:block;font-size:11px;opacity:.7}
+.msg.me{align-self:flex-start;background:var(--gold);color:var(--ink);border-bottom-right-radius:4px}
+.msg.them{align-self:flex-end;background:var(--panel2);border:1px solid var(--line);border-bottom-left-radius:4px}
+
+.fb{width:100%;border-radius:12px;padding:10px 14px;font-size:15px;line-height:1.6;text-align:right;animation:in .3s}
+.fb.good{background:#173a2c;border:1px solid var(--good)}
+.fb.bad{background:#3a2020;border:1px solid var(--bad)}
+.fb.tip{background:var(--panel2);border:1px solid var(--line)}
+
+.pad{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;width:100%;direction:ltr}
+.key{font:400 26px var(--display);background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:10px;padding:8px 0;cursor:pointer}
+.att{display:flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
+.att i{width:30px;height:16px;border:2px dashed var(--gold);border-radius:3px}
+.att i.x{opacity:.2}
+
+.call{font:400 52px/1 var(--display);color:var(--ink);background:var(--paper);padding:10px 26px;border-radius:22px;animation:stamp .4s cubic-bezier(.3,1.6,.5,1)}
+@keyframes stamp{from{transform:scale(2) rotate(-12deg);opacity:0}to{transform:rotate(-3deg);opacity:1}}
+.race{width:100%;display:flex;flex-direction:column;gap:7px}
+.lane{display:grid;grid-template-columns:62px 1fr;gap:8px;align-items:center;font-size:13px;text-align:right}
+.track{height:16px;background:var(--bg);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.track i{display:block;height:100%;width:0;background:var(--muted);border-radius:8px}
+.lane.me .track i{background:var(--gold)}
+.tap{width:130px;height:130px;border-radius:50%;border:none;background:var(--gold);color:var(--ink);font:400 30px var(--display);cursor:pointer;touch-action:manipulation}
+.tap:active{transform:scale(.95)}
+
+.wall{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%}
+.wl{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:13px}
+.wl .who{font-size:12px;color:var(--ink);background:var(--paper);border-radius:999px;padding:1px 10px}
+.wl.mine .who{background:var(--gold)}
+.wl .box{width:26px;height:30px;font-size:19px}
+
+.rule{background:var(--paper);color:var(--ink);border-radius:6px;padding:12px 16px;width:220px;box-shadow:0 10px 24px rgba(0,0,0,.35);animation:stamp .45s cubic-bezier(.3,1.6,.5,1)}
+.rule .h{font:400 20px var(--display);margin-bottom:6px}
+.rule .r{display:flex;justify-content:space-between;font-size:15px;padding:4px 0;border-top:1px dashed rgba(29,42,47,.3)}
+.rule .r.top{color:#9a5b00;font-weight:600}
+
+.rank{width:100%;display:flex;flex-direction:column;gap:6px}
+.rk{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:9px 12px;text-align:right;font-size:14px;animation:in .35s both}
+.rk .n{font:400 22px var(--display);color:var(--muted)}
+.rk .s{font:400 24px var(--display);color:var(--gold);font-variant-numeric:tabular-nums}
+.rk .d{font-size:12px;color:var(--muted)}
+.rk.me{border-color:var(--gold)}
+.rk.first .n{color:var(--gold)}
+.tw{width:100%;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{font-size:12px;color:var(--muted);font-weight:600;padding:6px 4px;border-bottom:1px solid var(--line)}
+td{padding:8px 4px;border-bottom:1px solid var(--line);text-align:center;font-variant-numeric:tabular-nums}
+td:first-child{text-align:right}
+td.w{color:var(--gold);font-weight:600}
+tr.me td:first-child{color:var(--gold)}
+th.cur,td.cur{background:rgba(232,184,74,.08)}
+
+.list{width:100%;display:flex;flex-direction:column;gap:7px;text-align:right}
+.list div{display:flex;gap:10px;align-items:flex-start;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:9px 12px;font-size:15px;line-height:1.55}
+.list div::before{content:"";flex:none;width:10px;height:10px;border-radius:50%;margin-top:7px;background:var(--good)}
+.list.no div::before{background:var(--bad)}
+.row{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<style>*,*::before,*::after{box-sizing:border-box}[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="key" viewBox="0 0 64 28"><circle cx="13" cy="14" r="9" fill="none" stroke="#e8b84a" stroke-width="5"/><path d="M22 14H60M48 14v9M56 14v7" stroke="#e8b84a" stroke-width="5" stroke-linecap="round" fill="none"/></symbol>
+    <symbol id="seal" viewBox="-14 -14 28 28"><circle r="13" fill="#b8473a"/><g fill="#efe6cf"><rect x="-6" y="-6" width="12" height="12"/><rect x="-6" y="-6" width="12" height="12" transform="rotate(45)"/></g><circle r="3" fill="#b8473a"/></symbol>
+    <symbol id="slip" viewBox="0 0 40 26"><rect x="1" y="1" width="38" height="24" rx="2" fill="#efe6cf"/><path d="M7 10h26M7 16h18" stroke="#1d2a2f" stroke-opacity=".5" stroke-width="2.5" stroke-linecap="round"/></symbol>
+    <symbol id="envelope" viewBox="0 0 220 150"><rect x="4" y="10" width="212" height="134" rx="6" fill="#efe6cf"/><path d="M4 16 110 90 216 16" fill="none" stroke="#1d2a2f" stroke-opacity=".35" stroke-width="3"/><use href="#seal" x="90" y="70" width="40" height="40"/></symbol>
+    <symbol id="mushaf" viewBox="0 0 120 150"><rect x="4" y="4" width="112" height="142" rx="8" fill="#1f6e57"/><rect x="14" y="14" width="92" height="122" rx="4" fill="none" stroke="#e8b84a" stroke-width="3"/><g transform="translate(60 75)" fill="#e8b84a"><rect x="-17" y="-17" width="34" height="34"/><rect x="-17" y="-17" width="34" height="34" transform="rotate(45)"/><circle r="9" fill="#1f6e57"/></g></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <header class="inv" aria-live="polite">
+    <div class="who"><span>أنت <b>فريق ١</b></span><span class="minute" id="minute">قبل البداية</span></div>
+    <div class="counts">
+      <div class="cnt" id="c-keys"><svg width="40" height="18"><use href="#key"/></svg><span class="v" id="v-keys">٠</span><span class="l">مفاتيح</span></div>
+      <div class="cnt" id="c-seals"><svg width="18" height="18"><use href="#seal"/></svg><span class="v" id="v-seals">٠</span><span class="l">أختام</span></div>
+      <div class="cnt" id="c-slips"><svg width="26" height="18"><use href="#slip"/></svg><span class="v" id="v-slips">٠</span><span class="l">قصاصات</span></div>
+      <div class="cnt" id="c-att"><span class="v" style="color:var(--gold);font-size:13px;border:2px dashed var(--gold);border-radius:3px;padding:1px 4px">محاولة</span><span class="v" id="v-att">٠</span><span class="l">محاولات</span></div>
+    </div>
+    <div class="dots" id="dots"></div>
+  </header>
+  <main id="stage"></main>
+</div>
+
+<script>
+(function(){
+  var AR='٠١٢٣٤٥٦٧٨٩';
+  function ar(n){ return String(n).replace(/\d/g,function(d){return AR[d];}); }
+  function $(s,r){ return (r||document).querySelector(s); }
+
+  /* ---------- sound effects only, no music ---------- */
+  var ac=null, master=null, noise=null;
+  function ensureAC(){ try{ if(!ac){ var C=window.AudioContext||window.webkitAudioContext; if(!C) return; ac=new C(); master=ac.createGain(); master.gain.value=.7; master.connect(ac.destination); var len=ac.sampleRate; noise=ac.createBuffer(1,len,ac.sampleRate); var d=noise.getChannelData(0); for(var i=0;i<len;i++) d[i]=Math.random()*2-1; } if(ac.state==='suspended') ac.resume(); }catch(e){} }
+  function env(g,t0,a,p,dec){ g.gain.setValueAtTime(.0001,t0); g.gain.exponentialRampToValueAtTime(p,t0+a); g.gain.exponentialRampToValueAtTime(.0001,t0+a+dec); }
+  function tone(type,f0,f1,t0,dur,p){ var o=ac.createOscillator(),g=ac.createGain(); o.type=type; o.frequency.setValueAtTime(f0,t0); if(f1) o.frequency.exponentialRampToValueAtTime(f1,t0+dur); env(g,t0,.008,p,dur); o.connect(g); g.connect(master); o.start(t0); o.stop(t0+dur+.05); }
+  function burst(t0,dur,p,ft,f0,f1,q){ var s=ac.createBufferSource(); s.buffer=noise; var f=ac.createBiquadFilter(); f.type=ft; f.frequency.setValueAtTime(f0,t0); if(f1) f.frequency.exponentialRampToValueAtTime(f1,t0+dur); f.Q.value=q||1; var g=ac.createGain(); env(g,t0,Math.min(.05,dur/3),p,dur); s.connect(f); f.connect(g); g.connect(master); s.start(t0); s.stop(t0+dur+.05); }
+  var SFX={
+    pop:function(n){ tone('sine',700,280,n,.14,.3); },
+    whoosh:function(n){ burst(n,.35,.12,'bandpass',300,2600,1.2); },
+    click:function(n){ tone('square',1900,0,n,.025,.1); tone('square',1450,0,n+.07,.03,.1); },
+    stamp:function(n){ tone('sine',140,50,n,.3,.6); burst(n,.12,.22,'lowpass',900,0,.7); },
+    good:function(n){ tone('sine',220,90,n,.25,.45); burst(n,.18,.16,'bandpass',1500,3500,1.5); },
+    buzz:function(n){ tone('sawtooth',150,110,n,.4,.12); },
+    paper:function(n){ for(var i=0;i<3;i++) burst(n+i*.07,.06,.12,'highpass',2500,0,.8); },
+    tick:function(n){ tone('sine',1300,0,n,.04,.12); }
+  };
+  function sfx(n){ if(!ac||!SFX[n]) return; try{ SFX[n](ac.currentTime+.01); }catch(e){} }
+  document.addEventListener('pointerdown', ensureAC, {once:false});
+
+  /* ---------- game data ---------- */
+  var SL={
+    A:{lock:1,pos:'الرقم الأول',q:'عدد آيات سورة الإخلاص',a:4},
+    B:{lock:2,pos:'الرقم الثالث',q:'عدد آيات سورة التين',a:8},
+    C:{lock:3,pos:'الرقم الثاني',q:'عدد السور اللي ما تبدأ بالبسملة',a:1},
+    D:{lock:1,pos:'الرقم الثالث',q:'عدد آيات سورة الكوثر',a:3},
+    E:{lock:1,pos:'الرقم الثاني',q:'عدد آيات سورة الناس',a:6}
+  };
+  var POS={'الرقم الأول':0,'الرقم الثاني':1,'الرقم الثالث':2};
+  var RULES=[{n:'أ',k:3,s:1,l:2},{n:'ب',k:1,s:3,l:2},{n:'ج',k:2,s:2,l:3}];
+  var OTHERS=[{t:'فريق ٢',k:5,s:3,l:1},{t:'فريق ٣',k:2,s:6,l:1},{t:'فريق ٤',k:2,s:2,l:4}];
+  var S;
+  function fresh(){
+    var order=[0,1,2].sort(function(){return Math.random()-.5;});
+    S={step:0, rules:order.map(function(i){return RULES[i];}), env:null, slips:[], seals:0, att:0, keys:0, market:null, sold:null, fazaa:null, opened:false};
+  }
+  function have(id){ return S.slips.some(function(s){return s.id===id && !s.used;}); }
+  function unused(){ return S.slips.filter(function(s){return !s.used;}).length; }
+
+  /* ---------- inventory ---------- */
+  var prev={};
+  function inv(){
+    var vals={keys:S.keys,seals:S.seals,slips:unused(),att:S.att};
+    Object.keys(vals).forEach(function(k){
+      $('#v-'+k).textContent=ar(vals[k]);
+      var c=$('#c-'+k);
+      if(prev[k]!==undefined && prev[k]!==vals[k]){
+        c.classList.remove('flash-up','flash-down'); void c.offsetWidth;
+        c.classList.add(vals[k]>prev[k]?'flash-up':'flash-down');
+        setTimeout(function(){ c.classList.remove('flash-up','flash-down'); },900);
+      }
+      prev[k]=vals[k];
+    });
+  }
+  function notesHTML(){
+    var rows=[1,2,3].map(function(L){
+      var d=[null,null,null];
+      S.slips.forEach(function(s){ var x=SL[s.id]; if(x.lock===L && s.open) d[POS[x.pos]]=x.a; });
+      var done = L===1 && S.opened;
+      return '<div class="nrow"><span>قفل '+ar(L)+(done?' <b class="g">(فتحتوه)</b>':'')+'</span><div class="boxes">'+d.map(function(v){return '<div class="box'+(v!==null?' f':'')+'">'+(v!==null?ar(v):'')+'</div>';}).join('')+'</div></div>';
+    }).join('');
+    return '<div class="notes"><div class="t">ورقة فريقكم: الأرقام اللي عرفتوها</div>'+rows+'</div>';
+  }
+  function slipHTML(s){
+    var x=SL[s.id];
+    return '<button class="slip'+(s.used?' used':'')+'" data-id="'+s.id+'" type="button"><div class="tx"><div class="h">قفل '+ar(x.lock)+' · '+x.pos+'</div><div class="q">'+x.q+'</div></div>'+
+      (s.open?'<div class="a">'+ar(x.a)+'</div>':'<div class="a hid">اضغط<br>وافتح المصحف</div>')+'</button>';
+  }
+  function bindSlips(root,after){
+    root._after=after;
+    if(root._bound) return; root._bound=true;
+    root.addEventListener('click',function(e){
+      var b=e.target.closest('.slip'); if(!b||!root.contains(b)||b._busy) return;
+      var s=S.slips.filter(function(z){return z.id===b.dataset.id;})[0];
+      if(!s||s.open||s.used) return;
+      b._busy=true; sfx('paper'); b.querySelector('.a').innerHTML='…';
+      setTimeout(function(){ s.open=true; sfx('pop'); if(b.isConnected) b.outerHTML=slipHTML(s); if(root._after) root._after(); },550);
+    });
+  }
+
+  /* ---------- steps ---------- */
+  var STEPS=[
+  { m:'قبل البداية', r:function(el){
+      el.innerHTML='<h1>مَفاتِح</h1><h2>جرّبها كأنك فريق</h2>'+
+        '<p>أنت <b class="g">فريق ١</b>. على الجدار ٤ أقفال، وتحت كل قفل ظرف فيه مفاتيح.</p>'+
+        '<p>أول شي: واحد من الطلاب يختار <b class="g">ظرف القانون</b>. هذا الظرف يقرر وش الأغلى بالنهاية. اختر واحد:</p>'+
+        '<div class="envs">'+[0,1,2].map(function(i){return '<button class="env" data-i="'+i+'" type="button" aria-label="الظرف '+ar(i+1)+'"><svg width="92" height="64"><use href="#envelope"/></svg></button>';}).join('')+'</div>'+
+        '<div id="after"></div>';
+      el.querySelectorAll('.env').forEach(function(b){ b.addEventListener('click',function(){
+        if(S.env!==null) return; S.env=+b.dataset.i; sfx('stamp');
+        el.querySelectorAll('.env').forEach(function(o){ o.classList.add(o===b?'pick':'gone'); });
+        $('#after',el).innerHTML='<div class="fb tip">الظرفين الثانيين ينقطعون، والظرف اللي اخترته ينلصق على الجدار. ما أحد يعرف وش فيه، حتى المشرف.</div><button class="btn main" id="nx" type="button">يالله نبدأ</button>';
+        $('#nx',el).addEventListener('click',next);
+      }); });
+  }},
+  { m:'الدقيقة ١', r:function(el){
+      if(!S.slips.length){ S.slips=[{id:'A'},{id:'B'},{id:'C'}]; S.seals=3; S.att=3; inv(); }
+      el.innerHTML='<h2>استلمتوا أغراضكم</h2><p>٣ أختام، و٣ محاولات، ومصحفين، و٣ قصاصات.<br>كل قصاصة فيها رقم من رمز قفل. <b class="g">اضغط كل قصاصة</b> وطلّع جوابها من المصحف:</p>'+
+        '<div class="slips">'+S.slips.map(slipHTML).join('')+'</div><div id="nt" style="width:100%"></div><div id="after" style="width:100%"></div>';
+      function check(){
+        $('#nt',el).innerHTML=notesHTML();
+        if(S.slips.every(function(s){return s.open;}) && !$('#nx',el)){
+          $('#after',el).innerHTML='<div class="fb tip">لاحظ: كل قصاصة لقفل مختلف، وما فيه قفل مكتمل. تحتاجون قصاصات أكثر.</div><button class="btn main" id="nx" type="button">نروح نجيب قصاصات</button>';
+          $('#nx',el).addEventListener('click',next);
+        }
+      }
+      bindSlips(el,check); check();
+  }},
+  { m:'الدقيقة ٣', r:function(el){
+      var right=['الفيل','قريش','الماعون','الكوثر','الكافرون'], shuffled=['الكوثر','الفيل','الكافرون','قريش','الماعون'], got=[];
+      el.innerHTML='<h2>زاوية ١: ترتيب السور</h2><p>المشرف يرمي قدامكم ٥ بطاقات. <b class="g">اضغطها بالترتيب</b> مثل ما هي في المصحف:</p>'+
+        '<div class="sortrow" id="row"></div><div class="chips" id="pool">'+shuffled.map(function(n){return '<button class="chip" type="button">'+n+'</button>';}).join('')+'</div>'+
+        '<p class="dim">تلميح: الفهرس في آخر المصحف</p><div id="after" style="width:100%;display:flex;flex-direction:column;gap:10px;align-items:center"></div>';
+      var row=$('#row',el);
+      el.querySelectorAll('#pool .chip').forEach(function(c){ c.addEventListener('click',function(){
+        var n=c.textContent;
+        if(n===right[got.length]){
+          sfx('tick'); got.push(n); c.disabled=true; row.insertAdjacentHTML('beforeend','<span class="chip">'+n+'</span>');
+          if(got.length===5) win();
+        } else {
+          sfx('buzz'); row.classList.add('shake'); setTimeout(function(){row.classList.remove('shake');},400);
+          got=[]; row.innerHTML=''; el.querySelectorAll('#pool .chip').forEach(function(x){x.disabled=false;});
+          $('#after',el).innerHTML='<div class="fb bad">غلط! ترجعون من أول. ('+n+' مو مكانها هنا)</div>';
+        }
+      }); });
+      function win(){
+        sfx('good'); S.seals++; inv();
+        $('#after',el).innerHTML='<div class="fb good">صح! أخذتوا <b>ختم</b>. والحين اسحبوا قصاصة من الكيس بدون ما تشوفونها.</div><button class="btn main" id="draw" type="button">اسحب قصاصة</button>';
+        $('#draw',el).addEventListener('click',function(){
+          sfx('paper'); S.slips.push({id:'D'}); inv();
+          $('#after',el).innerHTML='<div class="slips">'+slipHTML(S.slips[3])+'</div><div id="nt" style="width:100%"></div>';
+          bindSlips($('#after',el),function(){
+            $('#nt',el).innerHTML=notesHTML()+'<div class="fb tip" style="margin-top:10px">قفل ١ صار ناقصه رقم واحد بس! بس هذا الرقم عند فريق ثاني.</div><button class="btn main" id="nx" type="button" style="margin-top:10px">كمّل</button>';
+            $('#nx',el).addEventListener('click',next);
+          });
+        });
+      }
+  }},
+  { m:'الدقيقة ١٠', r:function(el){
+      el.innerHTML='<div class="call">السوق مفتوح!</div><p>الحين تقدرون تتبادلون مع الفرق. يروح من فريقكم <b class="g">واحد بس</b> يتفاوض.</p>'+notesHTML()+
+        '<div class="chat"><div class="msg me"><small>فريق ١ (أنتم)</small>منو عنده الرقم الثاني من قفل ١؟</div><div class="msg them"><small>فريق ٢</small>عندنا! بس بـ ٣ أختام</div></div>'+
+        '<p><b class="g">وش بتسوي؟</b></p><div class="choices" id="ch">'+
+        '<button class="btn" data-c="pay3" type="button">أدفع ٣ أختام وخلاص <small>−٣ أختام</small></button>'+
+        '<button class="btn" data-c="pay2" type="button">أفاصل: ختمين وبس <small>−٢ ختم</small></button>'+
+        (have('B')?'<button class="btn" data-c="trade" type="button">أعطيهم قصاصة قفل ٢ بدالها <small>−١ قصاصة</small></button>':'')+
+        '</div><div id="after" style="width:100%;display:flex;flex-direction:column;gap:10px"></div>';
+      el.querySelectorAll('#ch .btn').forEach(function(b){ b.addEventListener('click',function(){
+        var c=b.dataset.c; S.market=c; $('#ch',el).remove(); var a=$('#after',el); var fb='';
+        if(c==='pay3'){ S.seals-=3; sfx('stamp'); fb='<div class="fb bad">أخذتوها، بس دفعتوا بدون مفاصلة. لو طلعت الأختام هي الأغلى بالنهاية… خسرتوا كثير.</div>'; }
+        if(c==='pay2'){ sfx('pop'); a.insertAdjacentHTML('beforeend','<div class="chat"><div class="msg me"><small>فريق ١</small>غالية… ختمين وبس</div><div class="msg them"><small>فريق ٢</small>…طيب، تم</div></div>'); S.seals-=2; fb='<div class="fb good">زين! المفاصلة وفّرت لكم ختم.</div>'; }
+        if(c==='trade'){ sfx('paper'); S.slips.forEach(function(s){ if(s.id==='B') s.used=true; }); S.slips=S.slips.filter(function(s){return s.id!=='B';}); fb='<div class="fb tip">ما دفعتوا أختام، بس عطيتوا فريق ٢ رقم من قفل ٢. يعني صاروا أقرب يفتحونه. انتبهوا وش تعطون!</div>'; }
+        S.slips.push({id:'E'}); inv();
+        a.insertAdjacentHTML('beforeend',fb+'<div class="slips">'+slipHTML(S.slips[S.slips.length-1])+'</div><div id="nt"></div>');
+        bindSlips(a,function(){
+          $('#nt',el).innerHTML=notesHTML()+'<button class="btn main" id="nx" type="button" style="margin-top:10px">قفل ١ مكتمل! روحوا للوح</button>';
+          $('#nx',el).addEventListener('click',next);
+        });
+      }); });
+  }},
+  { m:'الدقيقة ١٢', r:function(el){
+      var code=[];
+      el.innerHTML='<h2>عند اللوح</h2><p>تعطون المشرف ورقة محاولة، وتهمسون له الرمز. <b class="g">اكتب رمز قفل ١</b> من ورقة فريقكم:</p>'+notesHTML()+
+        '<div class="lockico" id="lk"><div class="boxes big" id="bx"><div class="box"></div><div class="box"></div><div class="box"></div></div></div>'+
+        '<div class="pad" id="pad">'+[1,2,3,4,5,6,7,8,9,0].map(function(d){return '<button class="key" type="button" data-d="'+d+'">'+ar(d)+'</button>';}).join('')+'</div>'+
+        '<div class="row" style="width:100%"><button class="btn" id="clr" type="button" style="flex:1">امسح</button><button class="btn main" id="try" type="button" style="flex:2" disabled>جرّب (تصرف محاولة)</button></div>'+
+        '<div id="after" style="width:100%;display:flex;flex-direction:column;gap:10px;align-items:center"></div>';
+      function draw(){ el.querySelectorAll('#bx .box').forEach(function(b,i){ b.textContent=code[i]!==undefined?ar(code[i]):''; b.classList.toggle('f',code[i]!==undefined); }); $('#try',el).disabled=code.length<3||S.att<1; }
+      el.querySelectorAll('.key').forEach(function(k){ k.addEventListener('click',function(){ if(code.length<3){ sfx('click'); code.push(+k.dataset.d); draw(); } }); });
+      $('#clr',el).addEventListener('click',function(){ code=[]; draw(); });
+      $('#try',el).addEventListener('click',function(){
+        if(S.att<1) return; S.att--; inv();
+        if(code.join('')==='463'){
+          S.opened=true; S.keys+=3; S.slips.forEach(function(s){ if(SL[s.id].lock===1) s.used=true; }); inv(); sfx('good');
+          $('#lk',el).classList.add('open'); $('#pad',el).remove(); el.querySelector('.row').remove();
+          setTimeout(function(){ sfx('stamp'); },350);
+          $('#after',el).innerHTML='<div class="fb good">صح! المشرف يكتب ٤٦٣ على اللوح قدام الكل، ويعطيكم الظرف. داخله <b>٣ مفاتيح</b>.</div><div class="row"><svg width="64" height="28"><use href="#key"/></svg><svg width="64" height="28"><use href="#key"/></svg><svg width="64" height="28"><use href="#key"/></svg></div><div class="fb tip">القصاصات اللي استخدمتوها تسلّمونها للمشرف، يعني ما تنحسب لكم بالنهاية.</div><button class="btn main" id="nx" type="button">كمّل</button>';
+          $('#nx',el).addEventListener('click',next);
+        } else {
+          sfx('buzz'); code=[]; draw();
+          if(S.att<1){
+            $('#pad',el).remove(); el.querySelector('.row').remove();
+            $('#after',el).innerHTML='<div class="fb bad">غلط، وخلصت محاولاتكم. في اللعبة الحقيقية ما تقدرون تفتحون أي قفل بعدها. لهذا ما تجرّبون إلا وأنتم متأكدين.</div><button class="btn main" id="nx" type="button">كمّل</button>';
+            $('#nx',el).addEventListener('click',next);
+          } else {
+            $('#after',el).innerHTML='<div class="fb bad">غلط! المشرف يضرب على الطاولة، وراحت عليكم محاولة. باقي لكم '+ar(S.att)+'. ارجعوا لورقة فريقكم.</div>';
+          }
+        }
+      });
+      draw();
+  }},
+  { m:'الدقيقة ١٥', r:function(el){
+      el.innerHTML='<div class="call">فزعة!</div><p>المشرف وقّف الكل: «أول فريق يجيب ٣ مصاحف مفتوحة على سورة الملك!»</p><p class="dim">اضغط الزر بأسرع ما تقدر قبل الفرق الثانية</p>'+
+        '<div class="race">'+['فريق ١','فريق ٢','فريق ٣','فريق ٤'].map(function(t,i){return '<div class="lane'+(i===0?' me':'')+'"><span>'+t+'</span><div class="track"><i id="r'+i+'"></i></div></div>';}).join('')+'</div>'+
+        '<button class="tap" id="tap" type="button">ابدأ</button><div id="after" style="width:100%;display:flex;flex-direction:column;gap:10px"></div>';
+      var started=false, mine=0, NEED=10, t0=0, done=false, speeds=[0,3600,4100,4700], raf;
+      var tap=$('#tap',el);
+      tap.addEventListener('click',function(){
+        if(done) return;
+        if(!started){ started=true; t0=performance.now(); tap.textContent='اضغط!'; loop(); return; }
+        mine++; sfx('tick'); $('#r0',el).style.width=Math.min(100,mine/NEED*100)+'%';
+        if(mine>=NEED) finish(true);
+      });
+      function loop(){
+        var t=performance.now()-t0, lost=false;
+        for(var i=1;i<4;i++){ var p=Math.min(1,t/speeds[i]); $('#r'+i,el).style.width=p*100+'%'; if(p>=1) lost=true; }
+        if(lost && !done) return finish(false);
+        if(!done) raf=requestAnimationFrame(loop);
+      }
+      function finish(w){
+        done=true; cancelAnimationFrame(raf); tap.disabled=true; S.fazaa=w;
+        if(w){ S.seals+=2; inv(); sfx('good'); $('#after',el).innerHTML='<div class="fb good">أنتم الأسرع! أخذتوا <b>ختمين</b>.</div>'; }
+        else { sfx('buzz'); $('#after',el).innerHTML='<div class="fb bad">فريق ٢ سبقكم وأخذ الختمين. مو مشكلة، «فزعة» تجي فجأة وتعطي أي فريق فرصة.</div>'; }
+        $('#after',el).insertAdjacentHTML('beforeend','<button class="btn main" id="nx" type="button">كمّل</button>'); $('#nx',el).addEventListener('click',next);
+      }
+  }},
+  { m:'الدقيقة ٢٠', r:function(el){
+      el.innerHTML='<h2>جاكم عرض</h2><div class="chat"><div class="msg them"><small>فريق ٤</small>عندكم قصاصة قفل ٣؟ نعطيكم فيها ختمين</div></div>'+
+        '<div class="slips">'+S.slips.filter(function(s){return s.id==='C';}).map(slipHTML).join('')+'</div>'+
+        '<p>تذكّر: القصاصة اللي تبقى عندك لآخر اللعبة <b class="g">لها نقاط</b>، والختم بعد <b class="g">له نقاط</b>. وما تدري وش الأغلى.</p>'+
+        '<div class="choices" id="ch"><button class="btn" data-c="sell" type="button">أبيعها بختمين <small>+٢ ختم، −١ قصاصة</small></button><button class="btn" data-c="keep" type="button">لا، أخليها عندي <small>بدون تغيير</small></button></div>'+
+        '<div id="after" style="width:100%;display:flex;flex-direction:column;gap:10px"></div>';
+      el.querySelectorAll('#ch .btn').forEach(function(b){ b.addEventListener('click',function(){
+        S.sold=b.dataset.c==='sell'; $('#ch',el).remove();
+        if(S.sold){ S.slips=S.slips.filter(function(s){return s.id!=='C';}); S.seals+=2; sfx('stamp'); $('#after',el).innerHTML='<div class="fb tip">بعتوها. صار عندكم أختام أكثر، وفريق ٤ بيفتح قفل ٣ بقصاصتكم.</div>'; }
+        else { sfx('pop'); $('#after',el).innerHTML='<div class="fb tip">خليتوها عندكم. ممكن تطلع القصاصات هي الأغلى بالنهاية… أو لا!</div>'; }
+        inv(); $('#after',el).insertAdjacentHTML('beforeend','<button class="btn main" id="nx" type="button">كمّل</button>'); $('#nx',el).addEventListener('click',next);
+      }); });
+  }},
+  { m:'الدقيقة ٣٠', r:function(el){
+      el.innerHTML='<div class="call">على المكشوف!</div><p>آخر ٥ دقايق، وأي تبادل ينقال بصوت عالي. وهذا اللوح الحين:</p>'+
+        '<div class="wall">'+
+        '<div class="wl'+(S.opened?' mine':'')+'"><span>قفل ١</span><div class="boxes">'+(S.opened?'<div class="box f">٤</div><div class="box f">٦</div><div class="box f">٣</div>':'<div class="box"></div><div class="box"></div><div class="box"></div>')+'</div><span class="who">'+(S.opened?'فريق ١ (أنتم)':'محد فتحه')+'</span></div>'+
+        '<div class="wl"><span>قفل ٢</span><div class="boxes"><div class="box f">٧</div><div class="box f">٥</div><div class="box f">٨</div></div><span class="who">فريق ٣</span></div>'+
+        '<div class="wl"><span>قفل ٣</span><div class="boxes"><div class="box f">٨</div><div class="box f">١</div><div class="box f">٢</div></div><span class="who">فريق ٤</span></div>'+
+        '<div class="wl"><span>القفل الكبير</span><div class="boxes"><div class="box f">١</div><div class="box f">١</div><div class="box f">٤</div></div><span class="who">فريق ٢</span></div>'+
+        '</div><div class="fb tip">رموز القفل الكبير كانت مخبّاة داخل ظرف قفل ٢ وظرف قفل ٣. فريق ٢ اشتراها من فريق ٣ وفريق ٤ وفتحه، وأخذ مفاتيح كثير.</div>'+
+        '<button class="btn main" id="nx" type="button">خلص الوقت، نعدّ</button>';
+      sfx('stamp'); $('#nx',el).addEventListener('click',next);
+  }},
+  { m:'الدقيقة ٣٥', r:function(el){
+      var me={t:'فريق ١ (أنتم)',k:S.keys,s:S.seals,l:unused(),me:true};
+      var teams=[me].concat(OTHERS);
+      function sc(t,r){ return t.k*r.k+t.s*r.s+t.l*r.l; }
+      el.innerHTML='<h2>وقت العد</h2><p>كل فريق يحط قدامه مفاتيحه، وأختامه، وقصاصاته اللي ما استخدمها:</p>'+
+        '<div class="tw"><table><tr><th>الفريق</th><th>مفاتيح</th><th>أختام</th><th>قصاصات</th></tr>'+teams.map(function(t){return '<tr'+(t.me?' class="me"':'')+'><td>'+t.t+'</td><td>'+ar(t.k)+'</td><td>'+ar(t.s)+'</td><td>'+ar(t.l)+'</td></tr>';}).join('')+'</table></div>'+
+        '<p>من يحسب نفسه الفايز؟ <b class="g">افتح الظرف</b> وشوف:</p><button class="env" id="open" type="button" aria-label="افتح الظرف"><svg width="180" height="122"><use href="#envelope"/></svg></button><div id="after" style="width:100%;display:flex;flex-direction:column;gap:12px;align-items:center"></div>';
+      $('#open',el).addEventListener('click',function(){
+        var R=S.rules[S.env]; $('#open',el).remove(); sfx('paper'); setTimeout(function(){ sfx('stamp'); },300);
+        var top=Math.max(R.k,R.s,R.l);
+        var ranked=teams.map(function(t){return {t:t,v:sc(t,R)};}).sort(function(a,b){return b.v-a.v;});
+        var a=$('#after',el);
+        a.innerHTML='<div class="rule"><div class="h">قانون الفوز (ظرف '+R.n+')</div>'+
+          '<div class="r'+(R.k===top?' top':'')+'"><span>المفتاح</span><b>'+ar(R.k)+' نقاط</b></div>'+
+          '<div class="r'+(R.s===top?' top':'')+'"><span>الختم</span><b>'+ar(R.s)+' نقاط</b></div>'+
+          '<div class="r'+(R.l===top?' top':'')+'"><span>القصاصة</span><b>'+ar(R.l)+' نقاط</b></div></div>'+
+          '<div class="rank">'+ranked.map(function(x,i){ var t=x.t, rk=1+ranked.filter(function(z){return z.v>x.v;}).length; return '<div class="rk'+(t.me?' me':'')+(rk===1?' first':'')+'" style="animation-delay:'+(.4+i*.35)+'s"><span class="n">'+ar(rk)+'</span><div><div>'+t.t+'</div><div class="d">'+ar(t.k)+'×'+ar(R.k)+' + '+ar(t.s)+'×'+ar(R.s)+' + '+ar(t.l)+'×'+ar(R.l)+'</div></div><span class="s">'+ar(x.v)+'</span></div>'; }).join('')+'</div>';
+        var myV=sc(me,R), myRank=1+ranked.filter(function(z){return z.v>myV;}).length, tie=ranked.filter(function(z){return z.v===myV;}).length>1;
+        setTimeout(function(){
+          sfx(myRank===1?'good':'pop');
+          a.insertAdjacentHTML('beforeend','<div class="fb '+(myRank===1?'good':'tip')+'">'+(myRank===1?(tie?'تعادلتوا على المركز الأول!':'فزتوا!'):'طلعتوا المركز '+ar(myRank)+(tie?' (تعادل).':'.'))+' وفريق ٢ اللي كان معه أكثر مفاتيح '+(sc(OTHERS[0],R)===ranked[0].v?'فاز.':'ما فاز!')+'</div>'+
+            '<p>ولو انسحب ظرف ثاني بالبداية؟</p><div class="tw"><table><tr><th>الفريق</th>'+S.rules.map(function(r,i){return '<th'+(i===S.env?' class="cur"':'')+'>ظرف '+r.n+'</th>';}).join('')+'</tr>'+
+            teams.map(function(t){ return '<tr'+(t.me?' class="me"':'')+'><td>'+t.t+'</td>'+S.rules.map(function(r,i){ var v=sc(t,r), best=Math.max.apply(null,teams.map(function(z){return sc(z,r);})); return '<td class="'+(v===best?'w ':'')+(i===S.env?'cur':'')+'">'+ar(v)+'</td>'; }).join('')+'</tr>'; }).join('')+'</table></div>'+
+            '<div class="fb tip">الفايز يتغير حسب الظرف. عشان كذا الفريق الذكي <b>ينوّع</b>: يجمع مفاتيح وأختام ويخلي له قصاصات.</div><button class="btn main" id="nx" type="button">الخلاصة</button>');
+          $('#nx',el).addEventListener('click',next);
+        },1900);
+      });
+  }},
+  { m:'الخلاصة', r:function(el){
+      el.innerHTML='<h2>وش تسوي، ووش تخلّي</h2>'+
+        '<div class="list"><div>افتح المصحف وطلّع أرقام قصاصاتك بسرعة</div><div>روح للزوايا كثير، كل نجاح = ختم وقصاصة</div><div>فاصل في السوق، دايم فيه سعر أقل</div><div>نوّع: مفاتيح، وأختام، وخلّ لك قصاصات</div><div>جرّب الرمز بس وأنت متأكد</div></div>'+
+        '<div class="list no"><div>لا تصرف كل أختامك</div><div>لا تبيع كل قصاصاتك</div><div>لا تخمّن الرمز، المحاولات ٣ بس</div><div>لا تكذب في رقم آية، غرامتها ختمين</div></div>'+
+        '<button class="btn main" id="again" type="button">العبها من جديد</button>';
+      $('#again',el).addEventListener('click',function(){ fresh(); prev={}; go(0); });
+  }}
+  ];
+
+  function dots(){ $('#dots').innerHTML=STEPS.map(function(_,i){return '<i class="'+(i<=S.step?'on':'')+'"></i>';}).join(''); }
+  function go(i){
+    S.step=i; var st=$('#stage'); st.innerHTML='<section class="card" id="card"></section>';
+    $('#minute').textContent=STEPS[i].m; dots(); inv();
+    STEPS[i].r($('#card'));
+    if(i>0){ sfx('whoosh'); window.scrollTo({top:0,behavior:'smooth'}); }
+  }
+  function next(){ go(Math.min(STEPS.length-1,S.step+1)); }
+  fresh(); go(0);
+})();
+</script>
+
+</body>
+</html>
